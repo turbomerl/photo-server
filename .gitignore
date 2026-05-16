@@ -2,6 +2,8 @@
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db
+*.db-wal
+*.db-shm
 .beads-credential-key
 
 # Go build artifact (single binary, built by `make build`)

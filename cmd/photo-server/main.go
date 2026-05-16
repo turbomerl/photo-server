@@ -17,6 +17,7 @@ import (
 
 	"github.com/turbomerl/photo-server/internal/config"
 	"github.com/turbomerl/photo-server/internal/server"
+	"github.com/turbomerl/photo-server/internal/store"
 )
 
 // version is overridden at build time via the Makefile:
@@ -54,6 +55,18 @@ func run() error {
 		"data_dir", cfg.DataDir,
 		"log_level", cfg.LogLevel.String(),
 	)
+
+	dbPath := filepath.Join(cfg.DataDir, "photo-server.db")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+	schemaVer, err := st.SchemaVersion()
+	if err != nil {
+		return err
+	}
+	logger.Info("database ready", "path", dbPath, "schema_version", schemaVer)
 
 	// Cancel the root context on SIGINT/SIGTERM so the HTTP server can
 	// drain in-flight uploads before exit (PRD F15 clean shutdown, N6
