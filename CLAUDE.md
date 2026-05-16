@@ -50,20 +50,49 @@ bd close <id>         # Complete work
 <!-- END BEADS INTEGRATION -->
 
 
+## Project Overview
+
+**photo-server** is a self-contained local server that lets people on a LAN
+upload, browse, and download photos in environments with no internet or
+existing wifi. The server creates its own access point; clients connect to it
+directly from their phones or laptops.
+
+The product requirements live in `docs/PRD.md`. Read it before making
+non-trivial changes — the offline-first constraint affects nearly every
+design decision (no cloud auth, no CDNs, no third-party fonts, no telemetry).
+
+## Status
+
+Pre-implementation but design decisions are mostly settled:
+
+- **Target hardware:** existing Dell mini-PC running Ubuntu (server) +
+  Ubiquiti UAP-AC-LR (single AP, marquee, PoE-powered via bundled
+  passive 24 V injector).
+- **Stack:** single Go binary under `systemd`, SQLite for metadata,
+  `libvips` for HEIC/thumbnailing, `dnsmasq` for DHCP/DNS, `nodogsplash`
+  (or equivalent) for the captive portal.
+- **Development is happening directly on the Dell** — see
+  `docs/DEV_HANDOFF.md` for setup. Building on the same kernel / glibc /
+  ext4 as the target removes a class of bugs, and the networking pieces
+  can only be exercised on the box anyway.
+
+See `docs/PRD.md` for full rationale and any decisions still open.
+
 ## Build & Test
 
-_Add your build and test commands here_
-
-```bash
-# Example:
-# npm install
-# npm test
-```
+_To be filled in once the stack is chosen._
 
 ## Architecture Overview
 
-_Add a brief overview of your project architecture_
+See `docs/PRD.md` for the current product spec. Architecture decisions
+(hardware choice, OS, web framework, storage layout) will be tracked as
+beads issues and summarised here once settled.
 
 ## Conventions & Patterns
 
-_Add your project-specific conventions here_
+- Track all work in beads (`bd`), not in markdown TODOs.
+- Anything that ships on the device must run fully offline. Reject
+  dependencies that phone home, fetch fonts/CSS from CDNs, or require
+  account sign-in to function.
+- Prefer boring, well-supported tech that survives unattended operation
+  on modest ARM hardware.
