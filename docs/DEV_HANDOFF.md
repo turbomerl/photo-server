@@ -255,8 +255,14 @@ install + network + UI + slideshow. Don't ship without it.
 
 - Track all work in beads (`bd ready`, `bd update <id> --claim`,
   `bd close <id>`). No markdown TODOs.
-- At end of session: `git push && bd dolt push` (see `CLAUDE.md` for the
-  full session-close protocol — beads enforces it via hooks).
+- At end of session: run **`bd export`** first, then stage
+  `.beads/issues.jsonl`, then `git push`. bd's auto-export is throttled
+  (~60s), so committing straight after `bd close` snapshots a *stale*
+  JSONL (issue still shows `in_progress`) — verify with
+  `git show HEAD:.beads/issues.jsonl | jq -r 'select(.id=="<id>").status'`.
+  Note `bd dolt push` is a no-op here (no Dolt remote on origin); the
+  issue history syncs via the git-committed `issues.jsonl`. See
+  `CLAUDE.md` for the full protocol — beads enforces it via hooks.
 - Offline-first applies even to dev: no fonts/JS/CSS from CDNs in the
   shipped binary. Dev-time tooling can use the internet freely.
 
