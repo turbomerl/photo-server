@@ -3,3 +3,10 @@
 .dolt/
 *.db
 .beads-credential-key
+
+# Go build artifact (single binary, built by `make build`)
+/photo-server
+
+# Local dev data dir (SQLite + photos). On the device this is the
+# systemd StateDirectory at /var/lib/photo-server, never in-repo.
+/data/

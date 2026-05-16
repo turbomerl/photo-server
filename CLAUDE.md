@@ -80,7 +80,35 @@ See `docs/PRD.md` for full rationale and any decisions still open.
 
 ## Build & Test
 
-_To be filled in once the stack is chosen._
+Single Go binary, **stdlib only** (offline-first: no third-party
+modules in the skeleton). Requires Go — see `docs/DEV_HANDOFF.md` §5.1.
+`go` is at `/usr/local/go/bin`; if it is not on `PATH` yet, either
+`source ~/.bashrc` or call `/usr/local/go/bin/go`.
+
+```bash
+make build     # -> ./photo-server (single binary)
+make test      # go test ./...
+make vet       # go vet ./...
+make check     # vet + test (pre-commit quality gate)
+make run       # build + run locally; data dir ./data, http :8080
+```
+
+Health check: `curl -fsS http://127.0.0.1:8080/healthz` → `{"status":"ok",...}`.
+
+Layout:
+
+- `cmd/photo-server/` — entrypoint: config load, logger, signal-driven
+  graceful shutdown.
+- `internal/config/` — environment-only config (`PHOTO_SERVER_*`),
+  honours systemd `$STATE_DIRECTORY`.
+- `internal/server/` — HTTP server, routing, `/healthz`. Feature
+  handlers (upload/gallery/admin/slideshow) attach here in later work.
+- `deploy/photo-server.service` — hardened systemd unit
+  (`Restart=on-failure`, `ProtectSystem=strict`, `StateDirectory=`).
+
+Run on the device under systemd; logs go to journald
+(`journalctl -u photo-server -f`). `libvips` is only needed from
+`kgu.12` (HEIC→JPEG) onward, not for the skeleton.
 
 ## Architecture Overview
 

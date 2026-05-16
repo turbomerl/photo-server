@@ -1,0 +1,62 @@
+# photo-server — offline wedding photo appliance (kgu.8 skeleton).
+#
+# Install on the Dell:
+#   sudo useradd --system --no-create-home --shell /usr/sbin/nologin photo-server
+#   sudo install -m0755 photo-server /usr/local/bin/photo-server
+#   sudo install -m0644 deploy/photo-server.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now photo-server
+#
+# Logs:    journalctl -u photo-server -f
+# Health:  curl -fsS http://127.0.0.1:8080/healthz
+
+[Unit]
+Description=photo-server (offline wedding photo appliance)
+Documentation=https://github.com/turbomerl/photo-server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=photo-server
+Group=photo-server
+ExecStart=/usr/local/bin/photo-server
+
+# Unattended all-day operation (PRD N8): always come back up.
+Restart=on-failure
+RestartSec=2s
+
+# SQLite DB + photo storage: /var/lib/photo-server. systemd exports
+# this as $STATE_DIRECTORY, which internal/config uses as the data dir.
+StateDirectory=photo-server
+StateDirectoryMode=0750
+WorkingDirectory=/var/lib/photo-server
+Environment=PHOTO_SERVER_ADDR=:8080
+
+# Bind low ports (e.g. :80 for the captive-portal flow) without root.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+# Hardening — the appliance has no business touching the rest of the box.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# NOTE: MemoryDenyWriteExecute is intentionally NOT enabled. Re-evaluate
+# at kgu.12 (libvips via cgo) — some image/codec libraries map W|X pages
+# and this would hard-fail them. Keep it off until proven safe with the
+# real transcode path.
+
+[Install]
+WantedBy=multi-user.target
