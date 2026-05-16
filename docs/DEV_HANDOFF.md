@@ -113,32 +113,61 @@ Tested for Ubuntu 22.04 / 24.04.
 sudo apt update
 sudo apt install -y \
   build-essential pkg-config git curl \
-  libvips-dev libheif-dev libheif-examples \
+  libvips-dev libvips-tools \
+  libheif-dev libheif-examples \
+  libheif-plugin-libde265 libheif-plugin-dav1d libheif-plugin-aomenc \
   sqlite3 \
   jq
 
-# Go: install the latest stable (apt's version is usually behind)
-curl -LO https://go.dev/dl/go1.22.0.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go1.22.0.linux-amd64.tar.gz
+# NOTE (2026-05-16, Ubuntu 24.04): libheif1/libheif-dev alone do NOT
+# decode HEIC. The decoder lives in a plugin — `libheif-plugin-libde265`
+# is mandatory for iPhone HEIC; dav1d/aomenc cover AVIF. Without
+# libde265 the kgu.2 `vips copy sample.heic` smoke test fails (PRD R2).
+
+# Go: install the latest stable (apt's version is usually behind).
+# Get the current version + sha256 from go.dev/dl (JSON endpoint):
+#   curl -fsSL 'https://go.dev/dl/?mode=json' | jq -r '.[0].version'
+# As of 2026-05-16 the current stable was go1.26.3 (NOT the 1.22 this
+# doc originally pinned — 4 minor versions stale). Verify the sha256.
+GOVER=go1.26.3   # <-- re-check go.dev/dl; do not blindly trust this
+curl -LO "https://go.dev/dl/${GOVER}.linux-amd64.tar.gz"
+sudo tar -C /usr/local -xzf "${GOVER}.linux-amd64.tar.gz"
 echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
 source ~/.bashrc
-go version    # should print go1.22.x
+go version    # should print the version you installed
 ```
 
-> Check `go.dev/dl` for the current version when you actually do this —
-> pin to the latest stable rather than 1.22 if a newer one is out.
+> Always re-check `go.dev/dl` for the current stable — this doc has
+> already gone stale once (1.22 → 1.26.3). Pin to whatever is current.
+> Note: the Bash shell here does not persist PATH between calls; until
+> you `source ~/.bashrc` in your own shell, invoke `/usr/local/go/bin/go`.
 
 ### 5.2 Network packages (install now, configure later)
 
 ```bash
 sudo apt install -y hostapd dnsmasq iw rfkill
-# Captive portal — nodogsplash is in apt on 22.04+; if not, build from source
-sudo apt install -y nodogsplash || echo "fallback: build nodogsplash from source"
+
+# Captive portal: nodogsplash was DROPPED from Ubuntu 24.04 (not in apt,
+# even in universe). Its maintained successor `opennds` IS in apt
+# (10.2.0 on 24.04). Decision (2026-05-16): use opennds — the PRD's
+# stack line already says "nodogsplash (or equivalent)". Filed as a
+# bead; PRD §9.6 / stack line updated.
+sudo apt install -y opennds
+
+# CRITICAL — disable AND mask, do not merely "not enable":
+# dnsmasq and opennds auto-START a systemd service on install and will
+# collide with the running NetworkManager + systemd-resolved (port 53).
+# "Not enabling" is insufficient — a reboot before kgu.5 exists would
+# bring them up. Mask them so they cannot start until kgu.5 deliberately
+# unmasks + configures them. hostapd ships masked already (idempotent).
+sudo systemctl disable --now dnsmasq opennds 2>/dev/null || true
+sudo systemctl mask dnsmasq hostapd opennds
 ```
 
-These are needed for the network-side issues (`kgu.5`, `kgu.6`). Don't
-enable / start them yet — they'll fight whatever NetworkManager is
-currently doing on the Dell. Configuration is its own beads ticket.
+These are needed for the network-side issues (`kgu.5`, `kgu.6`). They
+are installed-but-masked on purpose; `kgu.5` owns unmasking and
+configuring them. Confirm `systemctl is-active NetworkManager` still
+reports `active` after this step.
 
 ### 5.3 Beads (issue tracker)
 
@@ -155,16 +184,35 @@ source ~/.bashrc
 bd --version
 ```
 
-Then, in the repo:
+Then, in the repo — **`bd bootstrap` FIRST, before any other bd command**:
 
 ```bash
 cd ~/photo-server   # wherever you cloned it
-bd ready            # should list the same ready issues you saw on the laptop
+bd bootstrap --yes  # imports the 27 issues from git-tracked issues.jsonl
+bd ready            # NOW lists the same ready issues you saw on the laptop
 ```
 
-The `.beads/` directory is portable; the issue history travels with the
-repo. If you've set up the GitHub remote, `bd dolt push` syncs the beads
-DB so both machines stay in step.
+> ⚠️ HARD-WON LESSON (2026-05-16). The release asset is no longer
+> `bd-linux-amd64.tar.gz` and the repo moved: it is now
+> `gastownhall/beads`, asset `beads_<ver>_linux_amd64.tar.gz`.
+>
+> More importantly: `.beads/embeddeddolt/` is **git-ignored**, so a
+> fresh clone has **no issue database** — only the git-tracked
+> `.beads/issues.jsonl` snapshot. You MUST run `bd bootstrap --yes`
+> first; it creates the DB and imports the 27 issues with stable IDs.
+>
+> Running ANY other bd command first (`bd ready`, `bd prime`, `bd
+> import`) against the uninitialised DB triggers bd's **auto-export
+> against an empty DB, which DELETES `.beads/issues.jsonl`** — wiping
+> the only copy of the issues in the working tree. Recovery if this
+> happens: `git restore .beads/issues.jsonl && rm -rf
+> .beads/embeddeddolt && bd bootstrap --yes`.
+
+The `.beads/` directory is portable, but the issue history travels via
+the git-committed `issues.jsonl`, NOT the (git-ignored) Dolt dir. There
+is no Dolt remote on origin (`git ls-remote origin 'refs/dolt/*'` is
+empty); cross-machine sync is: commit `issues.jsonl` → push → on the
+other machine `git pull` then `bd bootstrap`/`bd import`.
 
 ### 5.4 Verify Dell suitability (this is `kgu.2`)
 
@@ -180,6 +228,14 @@ vips copy sample.heic /tmp/out.jpg
 
 If any check fails, note it on `kgu.2` and we re-plan that issue before
 starting build work.
+
+**Status (2026-05-16):** disk (235 GB free on `/`), NIC (`eno1`
+gigabit), CPU/RAM (8 cores / 15 GiB) and a clean Ubuntu 24.04.4 all
+PASS — recorded on `kgu.2`. The single-file HEIC smoke test runs once a
+real phone HEIC is supplied. The acceptance criteria also call for a
+**~20-concurrent HEIC→JPEG soak test**; that is rehearsal-grade and
+tracked as its own follow-up bead (do it under `kgu.25` conditions),
+so `kgu.2` is closed on the hardware checks, not the soak.
 
 ## 6. Where to start
 

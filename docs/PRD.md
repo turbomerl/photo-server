@@ -226,9 +226,15 @@ hardware and stack:
 1. ~~Compute~~ — **decided:** repurpose the existing Dell mini-PC running Ubuntu as the server. Owner's laptop is the fallback if the Dell turns out to be unsuitable after the rehearsal. No hardware to buy.
 2. **AP hardware**: single PoE AP in the marquee. Wired backhaul from the server in the house alongside the marquee mains feed, into a PoE switch (or PoE injector) → AP. Leaning **Ubiquiti U6-Lite** for the PoE + decent client capacity at this price point; alternatives welcome.
 3. **Storage**: internal NVMe vs. external USB SSD. Either is fine at 75 GB; preference is whatever makes "hand the couple the photos afterwards" simplest.
-4. ~~OS / stack~~ — **decided:** Ubuntu (already on the Dell) + a single **Go binary under `systemd`**. SQLite for metadata. `libvips` (with HEIC support) for thumbnailing and HEIC → JPEG conversion. `dnsmasq` for DHCP/DNS. `nodogsplash` (or equivalent) for the captive-portal redirect. One process, one config file, one binary to copy.
+4. ~~OS / stack~~ — **decided:** Ubuntu (already on the Dell) + a single **Go binary under `systemd`**. SQLite for metadata. `libvips` (with HEIC support) for thumbnailing and HEIC → JPEG conversion. `dnsmasq` for DHCP/DNS. `opennds` for the captive-portal redirect
+(the originally-named `nodogsplash` was dropped from Ubuntu 24.04;
+`opennds` 10.2.0 is its maintained successor and is the "or
+equivalent" — substitution decided 2026-05-16, see DEV_HANDOFF §5.2).
+One process, one config file, one binary to copy.
 5. **Persistent session mechanism**: long-lived `localStorage` token + cookie issued on first visit. Confirm it survives iOS Safari "Private Relay" weirdness and Android Chrome backgrounding.
-6. **Captive-portal handling**: pick a known-good approach (e.g. `nodogsplash`-style) and accept that ~5 % of guests will manually open the URL.
+6. **Captive-portal handling**: `opennds` (nodogsplash's maintained
+   successor; nodogsplash is gone from Ubuntu 24.04). Accept that
+   ~5 % of guests will manually open the URL.
 7. **Hostname / TLS**: HTTP behind the captive portal at a friendly mDNS name. Self-signed HTTPS adds a scary browser warning to the QR-and-go flow — skip unless we *need* it.
 8. **Backup**: USB stick left plugged in for periodic rsync; the couple keeps the SSD afterwards anyway. Skip RAID.
 9. **Distribution**: not applicable — single device, hand-built. We just need a clean install procedure that we can re-run if the SSD dies the week before.
