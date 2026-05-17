@@ -11,6 +11,7 @@ import (
 type Job struct {
 	Hash string
 	Ext  string // original extension, e.g. ".heic"
+	MIME string // image/heic, image/jpeg, ...
 }
 
 // Pool runs conversions on a bounded set of workers so a speech-time
@@ -54,15 +55,22 @@ func (p *Pool) worker(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case j := <-p.jobs:
-			err := p.conv.GalleryJPEG(ctx, j.Hash, j.Ext)
-			p.inFlt.Delete(j.Hash)
-			if err != nil {
+			// Every photo needs a grid thumbnail; only HEIC/HEIF
+			// additionally needs a browser-viewable gallery JPEG.
+			if err := p.conv.Thumbnail(ctx, j.Hash, j.Ext); err != nil {
 				if ctx.Err() == nil {
-					p.log.Error("gallery conversion failed", "hash", j.Hash, "err", err)
+					p.log.Error("thumbnail conversion failed", "hash", j.Hash, "err", err)
 				}
-				continue
 			}
-			p.log.Debug("gallery jpeg ready", "hash", j.Hash)
+			if j.MIME == "image/heic" || j.MIME == "image/heif" {
+				if err := p.conv.GalleryJPEG(ctx, j.Hash, j.Ext); err != nil {
+					if ctx.Err() == nil {
+						p.log.Error("gallery conversion failed", "hash", j.Hash, "err", err)
+					}
+				}
+			}
+			p.inFlt.Delete(j.Hash)
+			p.log.Debug("renditions ready", "hash", j.Hash)
 		}
 	}
 }
@@ -70,7 +78,7 @@ func (p *Pool) worker(ctx context.Context) {
 // Enqueue submits a conversion. Non-blocking and de-duplicated by
 // hash: if the queue is full it logs and drops the job — the startup
 // backfill picks it up next run, so nothing is permanently lost.
-func (p *Pool) Enqueue(hash, ext string) {
+func (p *Pool) Enqueue(hash, ext, mime string) {
 	if p.stopped.Load() {
 		return
 	}
@@ -78,7 +86,7 @@ func (p *Pool) Enqueue(hash, ext string) {
 		return
 	}
 	select {
-	case p.jobs <- Job{Hash: hash, Ext: ext}:
+	case p.jobs <- Job{Hash: hash, Ext: ext, MIME: mime}:
 	default:
 		p.inFlt.Delete(hash)
 		p.log.Warn("convert queue full; deferring to backfill", "hash", hash)

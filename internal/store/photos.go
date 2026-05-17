@@ -1,6 +1,10 @@
 package store
 
-import "time"
+import (
+	"database/sql"
+	"errors"
+	"time"
+)
 
 // Photo is a row to insert. Empty UploaderSessionID and zero TakenAt
 // map to SQL NULL (both columns are nullable); zero Width/Height fall
@@ -64,13 +68,11 @@ type PhotoRef struct {
 	MIME string
 }
 
-// HEICPhotos lists every HEIC/HEIF photo (visible or hidden) so the
-// startup backfill can regenerate any gallery JPEG missing after a
-// crash or queue drop — the appliance self-heals (PRD N8).
-func (s *Store) HEICPhotos() ([]PhotoRef, error) {
-	rows, err := s.db.Query(
-		`SELECT content_hash, mime FROM photos
-		 WHERE mime IN ('image/heic', 'image/heif')`)
+// AllPhotos lists every photo (hash + mime) so the startup backfill
+// can regenerate any thumbnail/gallery rendition missing after a crash
+// or dropped queue item — the appliance self-heals (PRD N8).
+func (s *Store) AllPhotos() ([]PhotoRef, error) {
+	rows, err := s.db.Query(`SELECT content_hash, mime FROM photos`)
 	if err != nil {
 		return nil, err
 	}
@@ -85,6 +87,23 @@ func (s *Store) HEICPhotos() ([]PhotoRef, error) {
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+// PhotoByHash looks up a photo's mime by content hash (ok=false if
+// absent). Used by the lazy-regenerate-on-miss thumbnail route.
+func (s *Store) PhotoByHash(hash string) (PhotoRef, bool, error) {
+	var r PhotoRef
+	r.Hash = hash
+	err := s.db.QueryRow(
+		`SELECT mime FROM photos WHERE content_hash = ?`, hash,
+	).Scan(&r.MIME)
+	if errors.Is(err, sql.ErrNoRows) {
+		return PhotoRef{}, false, nil
+	}
+	if err != nil {
+		return PhotoRef{}, false, err
+	}
+	return r, true, nil
 }
 
 // PhotoTakenAt returns the stored taken_at for a photo id (ok=false if

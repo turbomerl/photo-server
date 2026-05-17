@@ -43,6 +43,10 @@ type Config struct {
 	GalleryMaxPx int
 	// JPEGQuality is the gallery JPEG quality (1–100).
 	JPEGQuality int
+	// ThumbPx is the longest edge of the gallery-grid webp thumbnail.
+	ThumbPx int
+	// ThumbQuality is the thumbnail webp quality (1–100).
+	ThumbQuality int
 	// VipsThumbnailBin is the vipsthumbnail executable; resolved via
 	// PATH at startup. Overridable for the locked-down systemd unit.
 	VipsThumbnailBin string
@@ -64,6 +68,8 @@ func Load() (Config, error) {
 		ConvertWorkers:   defaultWorkers(),
 		GalleryMaxPx:     2560,
 		JPEGQuality:      85,
+		ThumbPx:          400,
+		ThumbQuality:     80,
 		VipsThumbnailBin: getenv("VIPSTHUMBNAIL_BIN", "vipsthumbnail"),
 	}
 
@@ -104,8 +110,14 @@ func Load() (Config, error) {
 	if err := posIntEnv("JPEG_QUALITY", &c.JPEGQuality); err != nil {
 		return Config{}, err
 	}
-	if c.JPEGQuality > 100 {
-		return Config{}, fmt.Errorf("%sJPEG_QUALITY must be 1–100", envPrefix)
+	if err := posIntEnv("THUMB_PX", &c.ThumbPx); err != nil {
+		return Config{}, err
+	}
+	if err := posIntEnv("THUMB_QUALITY", &c.ThumbQuality); err != nil {
+		return Config{}, err
+	}
+	if c.JPEGQuality > 100 || c.ThumbQuality > 100 {
+		return Config{}, fmt.Errorf("%sJPEG_QUALITY/THUMB_QUALITY must be 1–100", envPrefix)
 	}
 
 	abs, err := filepath.Abs(c.DataDir)

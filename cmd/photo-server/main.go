@@ -82,17 +82,21 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// HEIC→JPEG conversion pool. If libvips tooling is missing the
-	// server still runs (degraded: HEIC just won't get gallery JPEGs).
+	// Rendition pipeline (thumbnails for every photo; gallery JPEGs for
+	// HEIC). If libvips tooling is missing the server still runs,
+	// degraded (no thumbs/gallery JPEGs).
 	var pool *convert.Pool
-	if conv, err := convert.NewConverter(cfg.VipsThumbnailBin, blobs, cfg.GalleryMaxPx, cfg.JPEGQuality, logger); err != nil {
-		logger.Warn("HEIC→JPEG conversion disabled", "err", err)
+	var conv *convert.Converter
+	if c, err := convert.NewConverter(cfg.VipsThumbnailBin, blobs,
+		cfg.GalleryMaxPx, cfg.JPEGQuality, cfg.ThumbPx, cfg.ThumbQuality, logger); err != nil {
+		logger.Warn("image conversion disabled", "err", err)
 	} else {
+		conv = c
 		pool = convert.NewPool(conv, cfg.ConvertWorkers, 256, logger)
 		pool.Start(ctx)
 		defer pool.Stop()
 		logger.Info("conversion pool ready", "workers", cfg.ConvertWorkers)
-		backfillGalleryJPEGs(st, blobs, pool, logger)
+		backfillRenditions(st, blobs, pool, logger)
 	}
 
 	srv := server.New(cfg.Addr, server.Deps{
@@ -101,34 +105,37 @@ func run() error {
 		Store:   st,
 		Blobs:   blobs,
 		Convert: pool,
+		Conv:    conv,
 		MaxBody: cfg.MaxUploadBytes,
 	})
 	return srv.Run(ctx, cfg.ShutdownTimeout)
 }
 
-// backfillGalleryJPEGs re-enqueues any HEIC/HEIF photo missing its
-// gallery JPEG (crash recovery / dropped queue items) so the appliance
-// self-heals on restart (PRD N8).
-func backfillGalleryJPEGs(st *store.Store, blobs *blobstore.Store, pool *convert.Pool, logger *slog.Logger) {
-	refs, err := st.HEICPhotos()
+// backfillRenditions re-enqueues any photo missing its thumbnail (or,
+// for HEIC, its gallery JPEG) after a crash or dropped queue item, so
+// the appliance self-heals on restart (PRD N8).
+func backfillRenditions(st *store.Store, blobs *blobstore.Store, pool *convert.Pool, logger *slog.Logger) {
+	refs, err := st.AllPhotos()
 	if err != nil {
-		logger.Warn("gallery backfill query failed", "err", err)
+		logger.Warn("rendition backfill query failed", "err", err)
 		return
 	}
 	queued := 0
 	for _, r := range refs {
-		ext := ".heic"
-		if r.MIME == "image/heif" {
-			ext = ".heif"
-		}
-		if blobs.Exists(blobstore.Gallery, r.Hash, "") {
+		ext := convert.ExtForMIME(r.MIME)
+		if ext == "" {
 			continue
 		}
-		pool.Enqueue(r.Hash, ext)
-		queued++
+		needThumb := !blobs.Exists(blobstore.Thumb, r.Hash, "")
+		isHEIC := r.MIME == "image/heic" || r.MIME == "image/heif"
+		needGallery := isHEIC && !blobs.Exists(blobstore.Gallery, r.Hash, "")
+		if needThumb || needGallery {
+			pool.Enqueue(r.Hash, ext, r.MIME)
+			queued++
+		}
 	}
 	if queued > 0 {
-		logger.Info("gallery backfill queued", "count", queued)
+		logger.Info("rendition backfill queued", "count", queued)
 	}
 }
 

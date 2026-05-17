@@ -23,7 +23,8 @@ type Deps struct {
 	Version string
 	Store   *store.Store
 	Blobs   *blobstore.Store
-	Convert *convert.Pool // may be nil if libvips tooling is absent
+	Convert *convert.Pool      // async pool; nil if libvips tooling absent
+	Conv    *convert.Converter // sync renderer for lazy-regenerate-on-miss
 	MaxBody int64
 }
 
@@ -34,6 +35,7 @@ type Server struct {
 	st      *store.Store
 	blobs   *blobstore.Store
 	conv    *convert.Pool
+	convr   *convert.Converter
 	maxBody int64
 	httpSrv *http.Server
 }
@@ -46,12 +48,14 @@ func New(addr string, d Deps) *Server {
 		st:      d.Store,
 		blobs:   d.Blobs,
 		conv:    d.Convert,
+		convr:   d.Conv,
 		maxBody: d.MaxBody,
 	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealth)
 	mux.HandleFunc("POST /upload", s.handleUpload)
+	mux.HandleFunc("GET /thumb/{hash}", s.handleThumb)
 
 	s.httpSrv = &http.Server{
 		Addr:    addr,

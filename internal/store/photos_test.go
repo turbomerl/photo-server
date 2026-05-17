@@ -59,7 +59,7 @@ func TestInsertPhotoNullTakenAt(t *testing.T) {
 	}
 }
 
-func TestHEICPhotos(t *testing.T) {
+func TestAllPhotosAndByHash(t *testing.T) {
 	s := openTemp(t)
 	now := time.Now()
 	for _, p := range []Photo{
@@ -72,17 +72,23 @@ func TestHEICPhotos(t *testing.T) {
 		}
 	}
 
-	refs, err := s.HEICPhotos()
+	refs, err := s.AllPhotos()
 	if err != nil {
-		t.Fatalf("HEICPhotos: %v", err)
+		t.Fatalf("AllPhotos: %v", err)
 	}
-	if len(refs) != 2 {
-		t.Fatalf("got %d HEIC refs, want 2 (%v)", len(refs), refs)
+	if len(refs) != 3 {
+		t.Fatalf("got %d refs, want 3 (%v)", len(refs), refs)
 	}
-	for _, r := range refs {
-		if r.MIME != "image/heic" && r.MIME != "image/heif" {
-			t.Errorf("unexpected mime in backfill set: %q", r.MIME)
-		}
+
+	r, ok, err := s.PhotoByHash("h-jpeg")
+	if err != nil || !ok {
+		t.Fatalf("PhotoByHash(h-jpeg): ok=%v err=%v", ok, err)
+	}
+	if r.MIME != "image/jpeg" {
+		t.Errorf("mime = %q, want image/jpeg", r.MIME)
+	}
+	if _, ok, _ := s.PhotoByHash("nope"); ok {
+		t.Error("PhotoByHash(nope) should be ok=false")
 	}
 }
 

@@ -39,6 +39,9 @@ func TestLoadDefaults(t *testing.T) {
 	if c.JPEGQuality != 85 {
 		t.Errorf("JPEGQuality = %d, want 85", c.JPEGQuality)
 	}
+	if c.ThumbPx != 400 || c.ThumbQuality != 80 {
+		t.Errorf("thumb defaults = (%d,%d), want (400,80)", c.ThumbPx, c.ThumbQuality)
+	}
 	if c.VipsThumbnailBin != "vipsthumbnail" {
 		t.Errorf("VipsThumbnailBin = %q, want vipsthumbnail", c.VipsThumbnailBin)
 	}
@@ -64,6 +67,8 @@ func TestLoadExplicitOverrides(t *testing.T) {
 	t.Setenv("PHOTO_SERVER_CONVERT_WORKERS", "2")
 	t.Setenv("PHOTO_SERVER_GALLERY_MAX_PX", "1600")
 	t.Setenv("PHOTO_SERVER_JPEG_QUALITY", "70")
+	t.Setenv("PHOTO_SERVER_THUMB_PX", "256")
+	t.Setenv("PHOTO_SERVER_THUMB_QUALITY", "60")
 	t.Setenv("PHOTO_SERVER_VIPSTHUMBNAIL_BIN", "/usr/bin/vipsthumbnail")
 
 	c, err := Load()
@@ -76,6 +81,9 @@ func TestLoadExplicitOverrides(t *testing.T) {
 	if c.ConvertWorkers != 2 || c.GalleryMaxPx != 1600 || c.JPEGQuality != 70 {
 		t.Errorf("convert knobs = (%d,%d,%d), want (2,1600,70)",
 			c.ConvertWorkers, c.GalleryMaxPx, c.JPEGQuality)
+	}
+	if c.ThumbPx != 256 || c.ThumbQuality != 60 {
+		t.Errorf("thumb knobs = (%d,%d), want (256,60)", c.ThumbPx, c.ThumbQuality)
 	}
 	if c.VipsThumbnailBin != "/usr/bin/vipsthumbnail" {
 		t.Errorf("VipsThumbnailBin = %q", c.VipsThumbnailBin)

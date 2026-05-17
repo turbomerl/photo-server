@@ -47,16 +47,66 @@ func isJPEG(b []byte) bool {
 	return len(b) > 3 && b[0] == 0xFF && b[1] == 0xD8 && b[2] == 0xFF
 }
 
+func isWebP(b []byte) bool {
+	return len(b) > 12 && string(b[0:4]) == "RIFF" && string(b[8:12]) == "WEBP"
+}
+
 func TestNewConverterMissingBin(t *testing.T) {
-	if _, err := NewConverter("definitely-not-a-real-binary-xyz", nil, 2560, 85, quietLog()); err == nil {
+	if _, err := NewConverter("definitely-not-a-real-binary-xyz", nil, 2560, 85, 400, 80, quietLog()); err == nil {
 		t.Fatal("expected error for missing vipsthumbnail binary")
+	}
+}
+
+func TestThumbnailFromRealHEIC(t *testing.T) {
+	bs, hash := seedHEIC(t)
+	c, err := NewConverter("vipsthumbnail", bs, 2560, 85, 400, 80, quietLog())
+	if err != nil {
+		t.Fatalf("NewConverter: %v", err)
+	}
+	if err := c.Thumbnail(context.Background(), hash, ".heic"); err != nil {
+		t.Fatalf("Thumbnail: %v", err)
+	}
+	if !bs.Exists(blobstore.Thumb, hash, "") {
+		t.Fatal("thumbnail not created")
+	}
+	f, err := bs.Open(blobstore.Thumb, hash, "")
+	if err != nil {
+		t.Fatalf("open thumb: %v", err)
+	}
+	defer f.Close()
+	data, _ := io.ReadAll(f)
+	if !isWebP(data) {
+		t.Fatalf("thumbnail is not webp (first bytes: % x)", data[:min(12, len(data))])
+	}
+
+	// Idempotent.
+	before, _ := os.ReadFile(bs.Path(blobstore.Thumb, hash, ""))
+	if err := c.Thumbnail(context.Background(), hash, ".heic"); err != nil {
+		t.Fatalf("second Thumbnail: %v", err)
+	}
+	after, _ := os.ReadFile(bs.Path(blobstore.Thumb, hash, ""))
+	if !bytes.Equal(before, after) {
+		t.Error("idempotent thumbnail rewrote the file")
+	}
+}
+
+func TestExtForMIME(t *testing.T) {
+	cases := map[string]string{
+		"image/jpeg": ".jpg", "image/png": ".png",
+		"image/heic": ".heic", "image/heif": ".heif",
+		"application/pdf": "",
+	}
+	for m, want := range cases {
+		if got := ExtForMIME(m); got != want {
+			t.Errorf("ExtForMIME(%q) = %q, want %q", m, got, want)
+		}
 	}
 }
 
 func TestGalleryJPEGFromRealHEIC(t *testing.T) {
 	bs, hash := seedHEIC(t)
 
-	c, err := NewConverter("vipsthumbnail", bs, 1024, 80, quietLog())
+	c, err := NewConverter("vipsthumbnail", bs, 1024, 80, 400, 80, quietLog())
 	if err != nil {
 		t.Fatalf("NewConverter: %v", err)
 	}
@@ -99,7 +149,7 @@ func TestGalleryJPEGMissingOriginal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c, err := NewConverter("vipsthumbnail", bs, 2560, 85, quietLog())
+	c, err := NewConverter("vipsthumbnail", bs, 2560, 85, 400, 80, quietLog())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +162,7 @@ func TestGalleryJPEGMissingOriginal(t *testing.T) {
 
 func TestPoolConvertsAndDedupes(t *testing.T) {
 	bs, hash := seedHEIC(t)
-	c, err := NewConverter("vipsthumbnail", bs, 1024, 80, quietLog())
+	c, err := NewConverter("vipsthumbnail", bs, 1024, 80, 400, 80, quietLog())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,14 +172,14 @@ func TestPoolConvertsAndDedupes(t *testing.T) {
 	p := NewPool(c, 2, 16, quietLog())
 	p.Start(ctx)
 
-	p.Enqueue(hash, ".heic")
-	p.Enqueue(hash, ".heic") // de-duped: same hash, no second conversion
+	p.Enqueue(hash, ".heic", "image/heic")
+	p.Enqueue(hash, ".heic", "image/heic") // de-duped: same hash, no second conversion
 
 	deadline := time.After(20 * time.Second)
-	for !bs.Exists(blobstore.Gallery, hash, "") {
+	for !(bs.Exists(blobstore.Gallery, hash, "") && bs.Exists(blobstore.Thumb, hash, "")) {
 		select {
 		case <-deadline:
-			t.Fatal("pool did not produce gallery JPEG within 20s")
+			t.Fatal("pool did not produce gallery JPEG + thumbnail within 20s")
 		case <-time.After(50 * time.Millisecond):
 		}
 	}
