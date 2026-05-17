@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/turbomerl/photo-server/internal/blobstore"
 	"github.com/turbomerl/photo-server/internal/config"
 	"github.com/turbomerl/photo-server/internal/server"
 	"github.com/turbomerl/photo-server/internal/store"
@@ -67,6 +68,12 @@ func run() error {
 		return err
 	}
 	logger.Info("database ready", "path", dbPath, "schema_version", schemaVer)
+
+	blobs, err := blobstore.New(cfg.DataDir)
+	if err != nil {
+		return err
+	}
+	logger.Info("blob store ready", "root", blobs.Root())
 
 	// Cancel the root context on SIGINT/SIGTERM so the HTTP server can
 	// drain in-flight uploads before exit (PRD F15 clean shutdown, N6
