@@ -58,6 +58,35 @@ func (s *Store) InsertPhoto(p Photo) (id int64, deduped bool, err error) {
 	return id, true, nil
 }
 
+// PhotoRef is a minimal photo reference for the conversion backfill.
+type PhotoRef struct {
+	Hash string
+	MIME string
+}
+
+// HEICPhotos lists every HEIC/HEIF photo (visible or hidden) so the
+// startup backfill can regenerate any gallery JPEG missing after a
+// crash or queue drop — the appliance self-heals (PRD N8).
+func (s *Store) HEICPhotos() ([]PhotoRef, error) {
+	rows, err := s.db.Query(
+		`SELECT content_hash, mime FROM photos
+		 WHERE mime IN ('image/heic', 'image/heif')`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []PhotoRef
+	for rows.Next() {
+		var r PhotoRef
+		if err := rows.Scan(&r.Hash, &r.MIME); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
 // PhotoTakenAt returns the stored taken_at for a photo id (ok=false if
 // the photo is absent or taken_at is NULL). Used by tests and later by
 // the libvips backfill path.

@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -34,6 +35,17 @@ type Config struct {
 	// quota (PRD encourages volume) — just a sanity bound so one
 	// pathological file can't exhaust the disk.
 	MaxUploadBytes int64
+	// ConvertWorkers bounds concurrent HEIC→JPEG conversions so a
+	// speech-time burst can't thrash the Dell (PRD R5).
+	ConvertWorkers int
+	// GalleryMaxPx caps the longest edge of the browser-viewable
+	// gallery JPEG (the original is preserved untouched).
+	GalleryMaxPx int
+	// JPEGQuality is the gallery JPEG quality (1–100).
+	JPEGQuality int
+	// VipsThumbnailBin is the vipsthumbnail executable; resolved via
+	// PATH at startup. Overridable for the locked-down systemd unit.
+	VipsThumbnailBin string
 }
 
 const envPrefix = "PHOTO_SERVER_"
@@ -43,12 +55,16 @@ const envPrefix = "PHOTO_SERVER_"
 // present but unparseable — absence always falls back to a default.
 func Load() (Config, error) {
 	c := Config{
-		Addr:            getenv("ADDR", ":8080"),
-		DataDir:         defaultDataDir(),
-		LogLevel:        slog.LevelInfo,
-		LogFile:         getenv("LOG_FILE", ""),
-		ShutdownTimeout: 15 * time.Second,
-		MaxUploadBytes:  64 << 20, // 64 MiB
+		Addr:             getenv("ADDR", ":8080"),
+		DataDir:          defaultDataDir(),
+		LogLevel:         slog.LevelInfo,
+		LogFile:          getenv("LOG_FILE", ""),
+		ShutdownTimeout:  15 * time.Second,
+		MaxUploadBytes:   64 << 20, // 64 MiB
+		ConvertWorkers:   defaultWorkers(),
+		GalleryMaxPx:     2560,
+		JPEGQuality:      85,
+		VipsThumbnailBin: getenv("VIPSTHUMBNAIL_BIN", "vipsthumbnail"),
 	}
 
 	if v := getenv("DATA_DIR", ""); v != "" {
@@ -79,6 +95,19 @@ func Load() (Config, error) {
 		c.MaxUploadBytes = n
 	}
 
+	if err := posIntEnv("CONVERT_WORKERS", &c.ConvertWorkers); err != nil {
+		return Config{}, err
+	}
+	if err := posIntEnv("GALLERY_MAX_PX", &c.GalleryMaxPx); err != nil {
+		return Config{}, err
+	}
+	if err := posIntEnv("JPEG_QUALITY", &c.JPEGQuality); err != nil {
+		return Config{}, err
+	}
+	if c.JPEGQuality > 100 {
+		return Config{}, fmt.Errorf("%sJPEG_QUALITY must be 1–100", envPrefix)
+	}
+
 	abs, err := filepath.Abs(c.DataDir)
 	if err != nil {
 		return Config{}, fmt.Errorf("resolve data dir %q: %w", c.DataDir, err)
@@ -104,4 +133,33 @@ func getenv(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// posIntEnv overrides *dst from PHOTO_SERVER_<key> if set, requiring a
+// positive integer. Absent leaves the default in place.
+func posIntEnv(key string, dst *int) error {
+	v := getenv(key, "")
+	if v == "" {
+		return nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n <= 0 {
+		return fmt.Errorf("%s%s %q: must be a positive integer", envPrefix, key, v)
+	}
+	*dst = n
+	return nil
+}
+
+// defaultWorkers caps conversion concurrency at the smaller of the CPU
+// count and 4 — enough to keep the queue draining during a burst
+// without the fanless Dell thermal-throttling (PRD R5).
+func defaultWorkers() int {
+	n := runtime.NumCPU()
+	if n > 4 {
+		n = 4
+	}
+	if n < 1 {
+		n = 1
+	}
+	return n
 }

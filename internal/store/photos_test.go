@@ -59,6 +59,33 @@ func TestInsertPhotoNullTakenAt(t *testing.T) {
 	}
 }
 
+func TestHEICPhotos(t *testing.T) {
+	s := openTemp(t)
+	now := time.Now()
+	for _, p := range []Photo{
+		{ContentHash: "h-heic", MIME: "image/heic", UploadedAt: now},
+		{ContentHash: "h-heif", MIME: "image/heif", UploadedAt: now},
+		{ContentHash: "h-jpeg", MIME: "image/jpeg", UploadedAt: now},
+	} {
+		if _, _, err := s.InsertPhoto(p); err != nil {
+			t.Fatalf("insert %s: %v", p.ContentHash, err)
+		}
+	}
+
+	refs, err := s.HEICPhotos()
+	if err != nil {
+		t.Fatalf("HEICPhotos: %v", err)
+	}
+	if len(refs) != 2 {
+		t.Fatalf("got %d HEIC refs, want 2 (%v)", len(refs), refs)
+	}
+	for _, r := range refs {
+		if r.MIME != "image/heic" && r.MIME != "image/heif" {
+			t.Errorf("unexpected mime in backfill set: %q", r.MIME)
+		}
+	}
+}
+
 func TestInsertPhotoSessionFK(t *testing.T) {
 	s := openTemp(t)
 

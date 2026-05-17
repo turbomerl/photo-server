@@ -30,6 +30,18 @@ func TestLoadDefaults(t *testing.T) {
 	if c.MaxUploadBytes != 64<<20 {
 		t.Errorf("MaxUploadBytes = %d, want %d", c.MaxUploadBytes, 64<<20)
 	}
+	if c.ConvertWorkers < 1 || c.ConvertWorkers > 4 {
+		t.Errorf("ConvertWorkers = %d, want 1..4", c.ConvertWorkers)
+	}
+	if c.GalleryMaxPx != 2560 {
+		t.Errorf("GalleryMaxPx = %d, want 2560", c.GalleryMaxPx)
+	}
+	if c.JPEGQuality != 85 {
+		t.Errorf("JPEGQuality = %d, want 85", c.JPEGQuality)
+	}
+	if c.VipsThumbnailBin != "vipsthumbnail" {
+		t.Errorf("VipsThumbnailBin = %q, want vipsthumbnail", c.VipsThumbnailBin)
+	}
 }
 
 func TestLoadStateDirectoryWins(t *testing.T) {
@@ -49,6 +61,10 @@ func TestLoadExplicitOverrides(t *testing.T) {
 	t.Setenv("PHOTO_SERVER_LOG_LEVEL", "debug")
 	t.Setenv("PHOTO_SERVER_SHUTDOWN_TIMEOUT", "30s")
 	t.Setenv("PHOTO_SERVER_MAX_UPLOAD_BYTES", "1048576")
+	t.Setenv("PHOTO_SERVER_CONVERT_WORKERS", "2")
+	t.Setenv("PHOTO_SERVER_GALLERY_MAX_PX", "1600")
+	t.Setenv("PHOTO_SERVER_JPEG_QUALITY", "70")
+	t.Setenv("PHOTO_SERVER_VIPSTHUMBNAIL_BIN", "/usr/bin/vipsthumbnail")
 
 	c, err := Load()
 	if err != nil {
@@ -56,6 +72,13 @@ func TestLoadExplicitOverrides(t *testing.T) {
 	}
 	if c.MaxUploadBytes != 1048576 {
 		t.Errorf("MaxUploadBytes = %d, want 1048576", c.MaxUploadBytes)
+	}
+	if c.ConvertWorkers != 2 || c.GalleryMaxPx != 1600 || c.JPEGQuality != 70 {
+		t.Errorf("convert knobs = (%d,%d,%d), want (2,1600,70)",
+			c.ConvertWorkers, c.GalleryMaxPx, c.JPEGQuality)
+	}
+	if c.VipsThumbnailBin != "/usr/bin/vipsthumbnail" {
+		t.Errorf("VipsThumbnailBin = %q", c.VipsThumbnailBin)
 	}
 	if c.Addr != ":9000" {
 		t.Errorf("Addr = %q, want :9000", c.Addr)
@@ -87,5 +110,17 @@ func TestLoadBadValuesError(t *testing.T) {
 	t.Setenv("PHOTO_SERVER_MAX_UPLOAD_BYTES", "-5")
 	if _, err := Load(); err == nil {
 		t.Fatal("expected error for non-positive MAX_UPLOAD_BYTES, got nil")
+	}
+
+	t.Setenv("PHOTO_SERVER_MAX_UPLOAD_BYTES", "1048576")
+	t.Setenv("PHOTO_SERVER_CONVERT_WORKERS", "0")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected error for non-positive CONVERT_WORKERS, got nil")
+	}
+
+	t.Setenv("PHOTO_SERVER_CONVERT_WORKERS", "2")
+	t.Setenv("PHOTO_SERVER_JPEG_QUALITY", "150")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected error for out-of-range JPEG_QUALITY, got nil")
 	}
 }

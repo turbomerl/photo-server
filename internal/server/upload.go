@@ -181,6 +181,12 @@ func (s *Server) storeOnePart(part *multipart.Part, sessionID, displayName strin
 		return res
 	}
 
+	// HEIC/HEIF needs a browser-viewable JPEG. Queue it off the hot
+	// path (PRD R4/R5); the gallery JPEG appears shortly after upload.
+	if s.conv != nil && (at.mime == "image/heic" || at.mime == "image/heif") {
+		s.conv.Enqueue(hash, at.ext)
+	}
+
 	res.OK = true
 	res.Hash = hash
 	res.MIME = at.mime

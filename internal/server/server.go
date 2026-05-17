@@ -12,8 +12,20 @@ import (
 	"time"
 
 	"github.com/turbomerl/photo-server/internal/blobstore"
+	"github.com/turbomerl/photo-server/internal/convert"
 	"github.com/turbomerl/photo-server/internal/store"
 )
+
+// Deps are the runtime dependencies the handlers share. Grouping them
+// keeps New stable as upload/gallery/admin/slideshow are added.
+type Deps struct {
+	Log     *slog.Logger
+	Version string
+	Store   *store.Store
+	Blobs   *blobstore.Store
+	Convert *convert.Pool // may be nil if libvips tooling is absent
+	MaxBody int64
+}
 
 // Server wraps the HTTP server and its dependencies.
 type Server struct {
@@ -21,20 +33,20 @@ type Server struct {
 	version string
 	st      *store.Store
 	blobs   *blobstore.Store
+	conv    *convert.Pool
 	maxBody int64
 	httpSrv *http.Server
 }
 
-// New builds a Server listening on addr. version is reported by the
-// health endpoint; st and blobs back the upload/gallery handlers;
-// maxBody caps a single uploaded file.
-func New(addr, version string, log *slog.Logger, st *store.Store, blobs *blobstore.Store, maxBody int64) *Server {
+// New builds a Server listening on addr with the given dependencies.
+func New(addr string, d Deps) *Server {
 	s := &Server{
-		log:     log,
-		version: version,
-		st:      st,
-		blobs:   blobs,
-		maxBody: maxBody,
+		log:     d.Log,
+		version: d.Version,
+		st:      d.Store,
+		blobs:   d.Blobs,
+		conv:    d.Convert,
+		maxBody: d.MaxBody,
 	}
 
 	mux := http.NewServeMux()

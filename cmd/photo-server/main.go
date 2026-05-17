@@ -17,6 +17,7 @@ import (
 
 	"github.com/turbomerl/photo-server/internal/blobstore"
 	"github.com/turbomerl/photo-server/internal/config"
+	"github.com/turbomerl/photo-server/internal/convert"
 	"github.com/turbomerl/photo-server/internal/server"
 	"github.com/turbomerl/photo-server/internal/store"
 )
@@ -81,8 +82,54 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	srv := server.New(cfg.Addr, version, logger, st, blobs, cfg.MaxUploadBytes)
+	// HEIC→JPEG conversion pool. If libvips tooling is missing the
+	// server still runs (degraded: HEIC just won't get gallery JPEGs).
+	var pool *convert.Pool
+	if conv, err := convert.NewConverter(cfg.VipsThumbnailBin, blobs, cfg.GalleryMaxPx, cfg.JPEGQuality, logger); err != nil {
+		logger.Warn("HEIC→JPEG conversion disabled", "err", err)
+	} else {
+		pool = convert.NewPool(conv, cfg.ConvertWorkers, 256, logger)
+		pool.Start(ctx)
+		defer pool.Stop()
+		logger.Info("conversion pool ready", "workers", cfg.ConvertWorkers)
+		backfillGalleryJPEGs(st, blobs, pool, logger)
+	}
+
+	srv := server.New(cfg.Addr, server.Deps{
+		Log:     logger,
+		Version: version,
+		Store:   st,
+		Blobs:   blobs,
+		Convert: pool,
+		MaxBody: cfg.MaxUploadBytes,
+	})
 	return srv.Run(ctx, cfg.ShutdownTimeout)
+}
+
+// backfillGalleryJPEGs re-enqueues any HEIC/HEIF photo missing its
+// gallery JPEG (crash recovery / dropped queue items) so the appliance
+// self-heals on restart (PRD N8).
+func backfillGalleryJPEGs(st *store.Store, blobs *blobstore.Store, pool *convert.Pool, logger *slog.Logger) {
+	refs, err := st.HEICPhotos()
+	if err != nil {
+		logger.Warn("gallery backfill query failed", "err", err)
+		return
+	}
+	queued := 0
+	for _, r := range refs {
+		ext := ".heic"
+		if r.MIME == "image/heif" {
+			ext = ".heif"
+		}
+		if blobs.Exists(blobstore.Gallery, r.Hash, "") {
+			continue
+		}
+		pool.Enqueue(r.Hash, ext)
+		queued++
+	}
+	if queued > 0 {
+		logger.Info("gallery backfill queued", "count", queued)
+	}
 }
 
 // newLogger writes structured logs to stderr (captured by journald

@@ -28,7 +28,14 @@ func newTestServer(t *testing.T) *Server {
 		t.Fatalf("blobstore.New: %v", err)
 	}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	return New(":0", "test", log, st, blobs, 64<<20)
+	return New(":0", Deps{
+		Log:     log,
+		Version: "test",
+		Store:   st,
+		Blobs:   blobs,
+		Convert: nil, // upload tests don't exercise conversion
+		MaxBody: 64 << 20,
+	})
 }
 
 func TestHealthz(t *testing.T) {
