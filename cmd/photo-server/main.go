@@ -81,7 +81,7 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	srv := server.New(cfg.Addr, version, logger)
+	srv := server.New(cfg.Addr, version, logger, st, blobs, cfg.MaxUploadBytes)
 	return srv.Run(ctx, cfg.ShutdownTimeout)
 }
 

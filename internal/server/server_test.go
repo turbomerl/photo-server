@@ -7,16 +7,32 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/turbomerl/photo-server/internal/blobstore"
+	"github.com/turbomerl/photo-server/internal/store"
 )
 
-func newTestServer() *Server {
-	return New(":0", "test", slog.New(slog.NewTextHandler(io.Discard, nil)))
+func newTestServer(t *testing.T) *Server {
+	t.Helper()
+	dir := t.TempDir()
+	st, err := store.Open(filepath.Join(dir, "photo-server.db"))
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	blobs, err := blobstore.New(dir)
+	if err != nil {
+		t.Fatalf("blobstore.New: %v", err)
+	}
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	return New(":0", "test", log, st, blobs, 64<<20)
 }
 
 func TestHealthz(t *testing.T) {
-	s := newTestServer()
+	s := newTestServer(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	rec := httptest.NewRecorder()
@@ -42,7 +58,7 @@ func TestHealthz(t *testing.T) {
 }
 
 func TestUnknownRouteIs404(t *testing.T) {
-	s := newTestServer()
+	s := newTestServer(t)
 	req := httptest.NewRequest(http.MethodGet, "/nope", nil)
 	rec := httptest.NewRecorder()
 	s.httpSrv.Handler.ServeHTTP(rec, req)
@@ -52,7 +68,7 @@ func TestUnknownRouteIs404(t *testing.T) {
 }
 
 func TestHealthzRejectsNonGET(t *testing.T) {
-	s := newTestServer()
+	s := newTestServer(t)
 	req := httptest.NewRequest(http.MethodPost, "/healthz", nil)
 	rec := httptest.NewRecorder()
 	s.httpSrv.Handler.ServeHTTP(rec, req)
@@ -64,7 +80,7 @@ func TestHealthzRejectsNonGET(t *testing.T) {
 // TestRunGracefulShutdown verifies Run returns nil when its context is
 // cancelled (the systemd stop / SIGTERM path).
 func TestRunGracefulShutdown(t *testing.T) {
-	s := newTestServer()
+	s := newTestServer(t)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	done := make(chan error, 1)

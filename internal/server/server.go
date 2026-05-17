@@ -10,22 +10,36 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/turbomerl/photo-server/internal/blobstore"
+	"github.com/turbomerl/photo-server/internal/store"
 )
 
 // Server wraps the HTTP server and its dependencies.
 type Server struct {
 	log     *slog.Logger
 	version string
+	st      *store.Store
+	blobs   *blobstore.Store
+	maxBody int64
 	httpSrv *http.Server
 }
 
 // New builds a Server listening on addr. version is reported by the
-// health endpoint and in the startup log line.
-func New(addr, version string, log *slog.Logger) *Server {
-	s := &Server{log: log, version: version}
+// health endpoint; st and blobs back the upload/gallery handlers;
+// maxBody caps a single uploaded file.
+func New(addr, version string, log *slog.Logger, st *store.Store, blobs *blobstore.Store, maxBody int64) *Server {
+	s := &Server{
+		log:     log,
+		version: version,
+		st:      st,
+		blobs:   blobs,
+		maxBody: maxBody,
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealth)
+	mux.HandleFunc("POST /upload", s.handleUpload)
 
 	s.httpSrv = &http.Server{
 		Addr:    addr,

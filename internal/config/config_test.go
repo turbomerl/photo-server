@@ -27,6 +27,9 @@ func TestLoadDefaults(t *testing.T) {
 	if c.ShutdownTimeout != 15*time.Second {
 		t.Errorf("ShutdownTimeout = %v, want 15s", c.ShutdownTimeout)
 	}
+	if c.MaxUploadBytes != 64<<20 {
+		t.Errorf("MaxUploadBytes = %d, want %d", c.MaxUploadBytes, 64<<20)
+	}
 }
 
 func TestLoadStateDirectoryWins(t *testing.T) {
@@ -45,10 +48,14 @@ func TestLoadExplicitOverrides(t *testing.T) {
 	t.Setenv("PHOTO_SERVER_DATA_DIR", "/srv/photos")
 	t.Setenv("PHOTO_SERVER_LOG_LEVEL", "debug")
 	t.Setenv("PHOTO_SERVER_SHUTDOWN_TIMEOUT", "30s")
+	t.Setenv("PHOTO_SERVER_MAX_UPLOAD_BYTES", "1048576")
 
 	c, err := Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)
+	}
+	if c.MaxUploadBytes != 1048576 {
+		t.Errorf("MaxUploadBytes = %d, want 1048576", c.MaxUploadBytes)
 	}
 	if c.Addr != ":9000" {
 		t.Errorf("Addr = %q, want :9000", c.Addr)
@@ -74,5 +81,11 @@ func TestLoadBadValuesError(t *testing.T) {
 	t.Setenv("PHOTO_SERVER_SHUTDOWN_TIMEOUT", "soon")
 	if _, err := Load(); err == nil {
 		t.Fatal("expected error for bad SHUTDOWN_TIMEOUT, got nil")
+	}
+
+	t.Setenv("PHOTO_SERVER_SHUTDOWN_TIMEOUT", "30s")
+	t.Setenv("PHOTO_SERVER_MAX_UPLOAD_BYTES", "-5")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected error for non-positive MAX_UPLOAD_BYTES, got nil")
 	}
 }

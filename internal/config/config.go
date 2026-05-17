@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -29,6 +30,10 @@ type Config struct {
 	LogFile string
 	// ShutdownTimeout bounds graceful drain of in-flight requests.
 	ShutdownTimeout time.Duration
+	// MaxUploadBytes caps a single uploaded file. Not a guest-visible
+	// quota (PRD encourages volume) — just a sanity bound so one
+	// pathological file can't exhaust the disk.
+	MaxUploadBytes int64
 }
 
 const envPrefix = "PHOTO_SERVER_"
@@ -43,6 +48,7 @@ func Load() (Config, error) {
 		LogLevel:        slog.LevelInfo,
 		LogFile:         getenv("LOG_FILE", ""),
 		ShutdownTimeout: 15 * time.Second,
+		MaxUploadBytes:  64 << 20, // 64 MiB
 	}
 
 	if v := getenv("DATA_DIR", ""); v != "" {
@@ -63,6 +69,14 @@ func Load() (Config, error) {
 			return Config{}, fmt.Errorf("%sSHUTDOWN_TIMEOUT %q: %w", envPrefix, v, err)
 		}
 		c.ShutdownTimeout = d
+	}
+
+	if v := getenv("MAX_UPLOAD_BYTES", ""); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || n <= 0 {
+			return Config{}, fmt.Errorf("%sMAX_UPLOAD_BYTES %q: must be a positive integer", envPrefix, v)
+		}
+		c.MaxUploadBytes = n
 	}
 
 	abs, err := filepath.Abs(c.DataDir)
