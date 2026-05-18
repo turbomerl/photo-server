@@ -21,6 +21,9 @@ var polaroidJS []byte
 //go:embed assets/upload.js
 var uploadJS []byte
 
+//go:embed assets/gallery.js
+var galleryJS []byte
+
 // One template set per page: base.html provides the shell + bottom
 // nav; the page file overrides the title/main/scripts blocks.
 func mustPage(page string) *template.Template {
@@ -43,7 +46,16 @@ type pageData struct {
 	// Recent is the session's own uploads, rendered server-side on the
 	// Upload page so it works with JS disabled (kgu.16).
 	Recent []store.PhotoListItem
+	// Photos is the gallery's first page, rendered server-side so the
+	// Gallery works with JS disabled (kgu.17); NextBefore is the
+	// keyset cursor for infinite scroll (0 = no more).
+	Photos     []store.PhotoListItem
+	NextBefore int64
 }
+
+// galleryPageSize is the gallery page size (server first page + each
+// infinite-scroll fetch).
+const galleryPageSize = 30
 
 func (s *Server) renderPage(w http.ResponseWriter, t *template.Template, d pageData) {
 	d.Version = s.version
@@ -97,10 +109,31 @@ func (s *Server) handleUploadPage(w http.ResponseWriter, r *http.Request) {
 	s.renderPage(w, tplUpload, pageData{Active: "upload", Name: name, Recent: recent})
 }
 
-// handleGalleryPage serves the gallery grid (kgu.17 fills the body).
+// handleGalleryPage serves the reverse-chronological grid (kgu.17).
+// The first page is rendered server-side so the Gallery is usable with
+// JavaScript disabled (PRD §5a); gallery.js adds infinite scroll.
 func (s *Server) handleGalleryPage(w http.ResponseWriter, r *http.Request) {
 	_, name := s.ensureName(w, r)
-	s.renderPage(w, tplGallery, pageData{Active: "gallery", Name: name})
+	photos, err := s.st.GalleryPhotos(0, galleryPageSize)
+	if err != nil {
+		s.log.Error("gallery page query", "err", err)
+		// Still render the shell; the grid just starts empty.
+	}
+	s.renderPage(w, tplGallery, pageData{
+		Active:     "gallery",
+		Name:       name,
+		Photos:     photos,
+		NextBefore: nextCursor(photos),
+	})
+}
+
+// nextCursor is the keyset cursor for the page after `photos`: the
+// smallest id seen, or 0 when the page was not full (no more rows).
+func nextCursor(photos []store.PhotoListItem) int64 {
+	if len(photos) < galleryPageSize {
+		return 0
+	}
+	return photos[len(photos)-1].ID
 }
 
 func (s *Server) handleAppCSS(w http.ResponseWriter, r *http.Request) {
@@ -119,4 +152,10 @@ func (s *Server) handleUploadJS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	_, _ = w.Write(uploadJS)
+}
+
+func (s *Server) handleGalleryJS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	_, _ = w.Write(galleryJS)
 }

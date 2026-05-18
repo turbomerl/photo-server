@@ -47,6 +47,34 @@ func clampLimit(raw string, def, max int) int {
 	return n
 }
 
+// handlePhotos is the gallery infinite-scroll feed: visible photos
+// newest-first, keyset-paginated. `?before=<id>` (0/absent = first
+// page). Returns {photos, next_before} where next_before=0 means the
+// end (kgu.17).
+func (s *Server) handlePhotos(w http.ResponseWriter, r *http.Request) {
+	var before int64
+	if v := r.URL.Query().Get("before"); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
+			before = n
+		}
+	}
+	limit := clampLimit(r.URL.Query().Get("limit"), galleryPageSize, 100)
+	items, err := s.st.GalleryPhotos(before, limit)
+	if err != nil {
+		s.log.Error("gallery feed query", "err", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	var next int64
+	if len(items) == limit {
+		next = items[len(items)-1].ID
+	}
+	writeJSON(w, map[string]any{
+		"photos":      toTiles(items),
+		"next_before": next,
+	})
+}
+
 // handleMyUploads returns the current session's own recent uploads,
 // newest first (kgu.16 "your recent uploads" — server-backed so it
 // survives reloads and tab backgrounding).
