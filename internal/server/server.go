@@ -64,6 +64,14 @@ func New(addr string, d Deps) *Server {
 	mux.HandleFunc("POST /session", s.handleSession)
 	mux.HandleFunc("GET /static/session.js", s.handleSessionJS)
 
+	// UI shell (kgu.15). "GET /{$}" matches only the exact root so
+	// unknown paths still 404 (not the Polaroid catch-all).
+	mux.HandleFunc("GET /{$}", s.handleIndex)
+	mux.HandleFunc("GET /upload", s.handleUploadPage)
+	mux.HandleFunc("GET /gallery", s.handleGalleryPage)
+	mux.HandleFunc("GET /static/app.css", s.handleAppCSS)
+	mux.HandleFunc("GET /static/polaroid.js", s.handlePolaroidJS)
+
 	s.httpSrv = &http.Server{
 		Addr:    addr,
 		Handler: s.logRequests(mux),

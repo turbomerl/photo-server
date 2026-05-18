@@ -1,0 +1,148 @@
+/* photo-server app shell (kgu.15). Mobile-first, dark-on-light,
+   system fonts only — no CDN, no web fonts, no external refs
+   (offline-first, PRD N1/§11). */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #fafafa;
+  --fg: #1c1c1e;
+  --muted: #6b6b70;
+  --card: #ffffff;
+  --line: #e3e3e6;
+  --accent: #b5651d;            /* warm Polaroid-ish */
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font: 17px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        Helvetica, Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.appbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.brand { font-weight: 600; white-space: nowrap; }
+.name { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.name-label { font-size: 13px; color: var(--muted); }
+.name input {
+  font: inherit;
+  font-size: 15px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  width: 9.5rem;
+  max-width: 42vw;
+}
+
+.content {
+  flex: 1;
+  padding: 20px 16px calc(84px + var(--safe-b));
+}
+
+/* ---- Polaroid ---- */
+.polaroid { text-align: center; }
+.hint { color: var(--muted); margin: 6px auto 26px; max-width: 28rem; }
+
+.shutter {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 184px;
+  height: 184px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 2px solid var(--line);
+  box-shadow: 0 6px 20px rgba(0,0,0,.10);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.shutter:active { transform: scale(.97); }
+.shutter-ring {
+  width: 116px; height: 116px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: inset 0 0 0 6px var(--card), 0 0 0 3px var(--accent);
+}
+.shutter-text { margin-top: 12px; font-weight: 600; color: var(--accent); }
+
+.noscript { margin-top: 22px; color: var(--muted); }
+
+.strip {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 30px;
+}
+.shot {
+  width: 104px;
+  background: var(--card);
+  padding: 8px 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+.shot img {
+  width: 100%; height: 88px; object-fit: cover;
+  display: block; border-radius: 2px; background: #ddd;
+}
+.shot.developing img { filter: grayscale(1) brightness(.8); opacity: .55; }
+.shot .cap { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.shot.failed { border-color: #c33; }
+.shot.failed .cap { color: #c33; }
+
+/* ---- placeholders (Upload / Gallery shells) ---- */
+.placeholder { max-width: 30rem; margin: 8vh auto 0; text-align: center; }
+.placeholder h1 { font-size: 1.5rem; margin-bottom: 10px; }
+.placeholder p { color: var(--muted); margin: 8px 0; }
+.placeholder .soon { font-size: 14px; }
+a { color: var(--accent); }
+
+/* ---- bottom tab bar ---- */
+.tabbar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  background: var(--card);
+  border-top: 1px solid var(--line);
+  padding-bottom: var(--safe-b);
+  z-index: 10;
+}
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 4px 12px;
+  min-height: 60px;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 12px;
+  -webkit-tap-highlight-color: transparent;
+}
+.tab-ico { font-size: 20px; line-height: 1; }
+.tab.is-active { color: var(--accent); font-weight: 600; }

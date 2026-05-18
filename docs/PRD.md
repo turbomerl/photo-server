@@ -94,19 +94,36 @@ no SPA framework, no build step beyond `go build`. The Go binary serves
 HTML + bundled CSS + a few KB of vanilla JS for upload progress and
 lazy thumbnail loading.
 
-Two tabs at the bottom of the screen:
+**Three** modes in a bottom tab bar (revised 2026-05-18 — was two
+tabs; owner added Polaroid as the headline mode, see DEV_HANDOFF /
+kgu.15):
 
-1. **Upload** — the default landing tab. Big primary button: *"Add
-   photos."* Tapping it opens the OS photo picker (multi-select).
-   Per-file progress bars; uploads survive page reload and brief
-   wifi drops. A small input at the top lets the guest set a display
-   name once; it's remembered on their device for the rest of the
-   day. Below the button: the guest's own recent uploads, so they
-   can confirm something went up.
-2. **Gallery** — reverse-chronological grid of thumbnails. Tap a
+1. **Polaroid** — *the default landing tab*. The phone behaves like a
+   Polaroid camera: one big shutter button → the native camera →
+   the photo is **auto-submitted to the shared album immediately**,
+   no review, no curation, no undo. A "developing" thumbnail strip
+   confirms each shot landed. This is the headline engagement
+   mechanic (snap-and-it's-in), complementing the slideshow (F17).
+
+   *Platform constraint (decided):* the appliance serves plain HTTP
+   on the LAN (§9.7), and browsers block `getUserMedia()` (a live
+   in-page viewfinder) on non-HTTPS origins. So Polaroid uses
+   `<input type="file" accept="image/*" capture="environment">` →
+   the OS camera → auto-`POST /upload`. We do **not** reverse the
+   no-HTTPS decision for an in-page viewfinder (it would add a cert
+   warning to the QR-and-go flow). Polaroid requires JavaScript.
+
+2. **Upload** — pick existing photos from the phone's photostream
+   (multi-select). Big *"Add photos"* button → OS picker. Per-file
+   progress bars; uploads survive page reload and brief wifi drops.
+   A small input at the top lets the guest set a display name once;
+   it's remembered on their device for the rest of the day. Below:
+   the guest's own recent uploads, so they can confirm something
+   went up.
+3. **Gallery** — reverse-chronological grid of thumbnails. Tap a
    thumbnail for the full-size view with a download button. Infinite
    scroll. No filters, no search, no sort options in v1 — keep it
-   "Instagram-simple".
+   "Instagram-simple". Works with JavaScript disabled.
 
 Plus an unlinked **/admin** page (password-protected) for the operator:
 storage usage, hide/delete a photo, USB export, shutdown.

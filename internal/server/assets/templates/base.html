@@ -1,0 +1,42 @@
+{{define "base"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fafafa">
+<title>{{block "title" .}}photo-server{{end}}</title>
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/session.js" defer></script>
+</head>
+<body>
+<header class="appbar">
+  <span class="brand">📷 Wedding photos</span>
+  <label class="name">
+    <span class="name-label">Your name</span>
+    <input id="ps-name" type="text" inputmode="text" autocomplete="name"
+           placeholder="optional" maxlength="40">
+  </label>
+</header>
+
+<main class="content">
+{{block "main" .}}{{end}}
+</main>
+
+<nav class="tabbar" role="navigation" aria-label="Primary">
+  <a class="tab{{if eq .Active "polaroid"}} is-active{{end}}" href="/"
+     {{if eq .Active "polaroid"}}aria-current="page"{{end}}>
+    <span class="tab-ico" aria-hidden="true">⦿</span><span>Polaroid</span>
+  </a>
+  <a class="tab{{if eq .Active "upload"}} is-active{{end}}" href="/upload"
+     {{if eq .Active "upload"}}aria-current="page"{{end}}>
+    <span class="tab-ico" aria-hidden="true">▤</span><span>Upload</span>
+  </a>
+  <a class="tab{{if eq .Active "gallery"}} is-active{{end}}" href="/gallery"
+     {{if eq .Active "gallery"}}aria-current="page"{{end}}>
+    <span class="tab-ico" aria-hidden="true">▦</span><span>Gallery</span>
+  </a>
+</nav>
+
+{{block "scripts" .}}{{end}}
+</body>
+</html>{{end}}

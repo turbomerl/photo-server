@@ -1,0 +1,22 @@
+{{define "title"}}Polaroid · Wedding photos{{end}}
+{{define "main"}}
+<section class="polaroid">
+  <p class="hint">Tap the shutter, take a photo — it drops straight
+  into the shared album. Like a Polaroid: no edit, no undo.</p>
+
+  <label class="shutter" id="ps-shutter">
+    <input id="ps-shot" type="file" accept="image/*" capture="environment" hidden>
+    <span class="shutter-ring" aria-hidden="true"></span>
+    <span class="shutter-text">Take photo</span>
+  </label>
+
+  <noscript>
+    <p class="noscript">Polaroid mode needs JavaScript. Use the
+    <a href="/upload">Upload</a> tab to pick photos, or browse the
+    <a href="/gallery">Gallery</a>.</p>
+  </noscript>
+
+  <ul id="ps-strip" class="strip" aria-live="polite"></ul>
+</section>
+{{end}}
+{{define "scripts"}}<script src="/static/polaroid.js" defer></script>{{end}}
