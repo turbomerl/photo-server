@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/turbomerl/photo-server/internal/blobstore"
+	"github.com/turbomerl/photo-server/internal/session"
 	"github.com/turbomerl/photo-server/internal/store"
 )
 
@@ -29,12 +30,13 @@ func newTestServer(t *testing.T) *Server {
 	}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	return New(":0", Deps{
-		Log:     log,
-		Version: "test",
-		Store:   st,
-		Blobs:   blobs,
-		Convert: nil, // upload tests don't exercise conversion
-		MaxBody: 64 << 20,
+		Log:      log,
+		Version:  "test",
+		Store:    st,
+		Blobs:    blobs,
+		Convert:  nil, // upload tests don't exercise conversion
+		Sessions: session.NewManager(st, 24*time.Hour),
+		MaxBody:  64 << 20,
 	})
 }
 

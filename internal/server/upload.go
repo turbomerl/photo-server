@@ -42,11 +42,12 @@ var acceptedTypes = map[string]struct {
 }
 
 // handleUpload accepts a multipart POST of one or more photos. Each
-// file is hashed + stored (dedup), EXIF-dated, optionally tagged to the
-// uploader's session, and recorded. The session id comes from the
-// `ps_session` cookie or a `session_id` query param; the display name
-// from a `display_name` query param or form field (kgu.14 owns secure
-// issuance). Parts are streamed — no whole-file buffering (PRD N4).
+// file is hashed + stored (dedup), EXIF-dated, tagged to the uploader's
+// session, and recorded. The session is resolved via the session
+// manager (kgu.14): the ps_session cookie, or a freshly issued one.
+// The display name comes from the stored session, overridable by a
+// `display_name` query param or form field. Parts are streamed — no
+// whole-file buffering (PRD N4).
 func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	mr, err := r.MultipartReader()
 	if err != nil {
@@ -54,10 +55,25 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionID := s.requestSessionID(r)
-	displayName := strings.TrimSpace(r.URL.Query().Get("display_name"))
+	var sessionID, sessionName string
+	if s.sessions != nil {
+		se, err := s.sessions.Ensure(w, r)
+		if err != nil {
+			s.log.Error("upload session ensure", "err", err)
+			http.Error(w, "session error", http.StatusInternalServerError)
+			return
+		}
+		sessionID, sessionName = se.ID, se.DisplayName
+	}
+
+	// Stored session name is the default; an explicit field overrides.
+	displayName := sessionName
+	if q := strings.TrimSpace(r.URL.Query().Get("display_name")); q != "" {
+		displayName = q
+	}
 
 	var results []uploadResult
+	nameFromForm := false
 	for {
 		part, err := mr.NextPart()
 		if errors.Is(err, io.EOF) {
@@ -68,17 +84,14 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Non-file parts carry the optional name/session form fields.
+		// A `display_name` form field overrides the stored name for
+		// this and any subsequent file parts; it is persisted to the
+		// session after the loop.
 		if part.FileName() == "" {
-			val := readFormValue(part)
-			switch part.FormName() {
-			case "display_name":
-				if displayName == "" {
-					displayName = strings.TrimSpace(val)
-				}
-			case "session_id":
-				if sessionID == "" {
-					sessionID = strings.TrimSpace(val)
+			if part.FormName() == "display_name" {
+				if v := strings.TrimSpace(readFormValue(part)); v != "" {
+					displayName = v
+					nameFromForm = true
 				}
 			}
 			_ = part.Close()
@@ -92,6 +105,14 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	if len(results) == 0 {
 		http.Error(w, "no files in upload", http.StatusBadRequest)
 		return
+	}
+
+	// Persist a form-supplied name so it sticks for the rest of the
+	// event (PRD: set once, remembered).
+	if nameFromForm && s.sessions != nil && sessionID != "" {
+		if err := s.sessions.SetDisplayName(sessionID, displayName); err != nil {
+			s.log.Error("persist display name", "err", err)
+		}
 	}
 
 	status := http.StatusOK
@@ -158,14 +179,6 @@ func (s *Server) storeOnePart(part *multipart.Part, sessionID, displayName strin
 		_ = f.Close()
 	}
 
-	if sessionID != "" {
-		if err := s.st.UpsertSession(sessionID, displayName); err != nil {
-			res.Error = "session error"
-			s.log.Error("upsert session", "err", err)
-			return res
-		}
-	}
-
 	id, deduped, err := s.st.InsertPhoto(store.Photo{
 		ContentHash:       hash,
 		MIME:              at.mime,
@@ -196,15 +209,6 @@ func (s *Server) storeOnePart(part *multipart.Part, sessionID, displayName strin
 	res.ThumbURL = "/thumb/" + hash    // served by kgu.13
 	res.OriginalURL = "/photo/" + hash // served by kgu.17/18
 	return res
-}
-
-// requestSessionID prefers the persistent cookie (kgu.14), then a
-// query param fallback for clients that can't yet set it.
-func (s *Server) requestSessionID(r *http.Request) string {
-	if c, err := r.Cookie("ps_session"); err == nil && c.Value != "" {
-		return c.Value
-	}
-	return strings.TrimSpace(r.URL.Query().Get("session_id"))
 }
 
 func readFormValue(r io.Reader) string {

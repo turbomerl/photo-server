@@ -13,49 +13,56 @@ import (
 
 	"github.com/turbomerl/photo-server/internal/blobstore"
 	"github.com/turbomerl/photo-server/internal/convert"
+	"github.com/turbomerl/photo-server/internal/session"
 	"github.com/turbomerl/photo-server/internal/store"
 )
 
 // Deps are the runtime dependencies the handlers share. Grouping them
 // keeps New stable as upload/gallery/admin/slideshow are added.
 type Deps struct {
-	Log     *slog.Logger
-	Version string
-	Store   *store.Store
-	Blobs   *blobstore.Store
-	Convert *convert.Pool      // async pool; nil if libvips tooling absent
-	Conv    *convert.Converter // sync renderer for lazy-regenerate-on-miss
-	MaxBody int64
+	Log      *slog.Logger
+	Version  string
+	Store    *store.Store
+	Blobs    *blobstore.Store
+	Convert  *convert.Pool      // async pool; nil if libvips tooling absent
+	Conv     *convert.Converter // sync renderer for lazy-regenerate-on-miss
+	Sessions *session.Manager
+	MaxBody  int64
 }
 
 // Server wraps the HTTP server and its dependencies.
 type Server struct {
-	log     *slog.Logger
-	version string
-	st      *store.Store
-	blobs   *blobstore.Store
-	conv    *convert.Pool
-	convr   *convert.Converter
-	maxBody int64
-	httpSrv *http.Server
+	log      *slog.Logger
+	version  string
+	st       *store.Store
+	blobs    *blobstore.Store
+	conv     *convert.Pool
+	convr    *convert.Converter
+	sessions *session.Manager
+	maxBody  int64
+	httpSrv  *http.Server
 }
 
 // New builds a Server listening on addr with the given dependencies.
 func New(addr string, d Deps) *Server {
 	s := &Server{
-		log:     d.Log,
-		version: d.Version,
-		st:      d.Store,
-		blobs:   d.Blobs,
-		conv:    d.Convert,
-		convr:   d.Conv,
-		maxBody: d.MaxBody,
+		log:      d.Log,
+		version:  d.Version,
+		st:       d.Store,
+		blobs:    d.Blobs,
+		conv:     d.Convert,
+		convr:    d.Conv,
+		sessions: d.Sessions,
+		maxBody:  d.MaxBody,
 	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealth)
 	mux.HandleFunc("POST /upload", s.handleUpload)
 	mux.HandleFunc("GET /thumb/{hash}", s.handleThumb)
+	mux.HandleFunc("GET /session", s.handleSession)
+	mux.HandleFunc("POST /session", s.handleSession)
+	mux.HandleFunc("GET /static/session.js", s.handleSessionJS)
 
 	s.httpSrv = &http.Server{
 		Addr:    addr,

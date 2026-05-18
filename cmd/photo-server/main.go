@@ -19,6 +19,7 @@ import (
 	"github.com/turbomerl/photo-server/internal/config"
 	"github.com/turbomerl/photo-server/internal/convert"
 	"github.com/turbomerl/photo-server/internal/server"
+	"github.com/turbomerl/photo-server/internal/session"
 	"github.com/turbomerl/photo-server/internal/store"
 )
 
@@ -100,13 +101,14 @@ func run() error {
 	}
 
 	srv := server.New(cfg.Addr, server.Deps{
-		Log:     logger,
-		Version: version,
-		Store:   st,
-		Blobs:   blobs,
-		Convert: pool,
-		Conv:    conv,
-		MaxBody: cfg.MaxUploadBytes,
+		Log:      logger,
+		Version:  version,
+		Store:    st,
+		Blobs:    blobs,
+		Convert:  pool,
+		Conv:     conv,
+		Sessions: session.NewManager(st, cfg.SessionMaxAge),
+		MaxBody:  cfg.MaxUploadBytes,
 	})
 	return srv.Run(ctx, cfg.ShutdownTimeout)
 }

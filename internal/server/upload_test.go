@@ -149,22 +149,34 @@ func TestUploadNewThenDedup(t *testing.T) {
 	}
 }
 
-func TestUploadWithSessionAndName(t *testing.T) {
+func TestUploadIssuesSessionAndPersistsName(t *testing.T) {
 	s := newTestServer(t)
 	img := jpegWithEXIF("2024:01:02 03:04:05")
 
+	// No cookie: the upload handler must issue a session (Set-Cookie)
+	// and tag the photo to it; the form display_name is persisted.
 	ct, body := multipartBody(t, map[string]string{"display_name": "Aunt Sue"},
 		[]struct {
 			field, name string
 			data        []byte
 		}{{"file", "p.jpg", img}})
-	rec, out := doUpload(t, s, ct, body, "sess-123")
+	rec, out := doUpload(t, s, ct, body, "")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)
 	}
 	id := int64(firstResult(out)["photo_id"].(float64))
 
-	sess, ok, err := s.st.GetSession("sess-123")
+	var token string
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == "ps_session" {
+			token = c.Value
+		}
+	}
+	if token == "" {
+		t.Fatal("upload did not issue a ps_session cookie")
+	}
+
+	sess, ok, err := s.st.GetSession(token)
 	if err != nil || !ok {
 		t.Fatalf("session not created: ok=%v err=%v", ok, err)
 	}
@@ -177,8 +189,28 @@ func TestUploadWithSessionAndName(t *testing.T) {
 	).Scan(&sid, &dn); err != nil {
 		t.Fatal(err)
 	}
-	if sid != "sess-123" || dn != "Aunt Sue" {
-		t.Errorf("photo tag = (%q,%q), want (sess-123, Aunt Sue)", sid, dn)
+	if sid != token || dn != "Aunt Sue" {
+		t.Errorf("photo tag = (%q,%q), want (%q, Aunt Sue)", sid, dn, token)
+	}
+
+	// Re-uploading with that cookie resolves the SAME session.
+	ct2, body2 := multipartBody(t, nil, []struct {
+		field, name string
+		data        []byte
+	}{{"file", "q.jpg", jpegWithEXIF("2024:02:02 02:02:02")}})
+	rec2, _ := doUpload(t, s, ct2, body2, token)
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("second upload status = %d", rec2.Code)
+	}
+	var sid2 string
+	if err := s.st.DB().QueryRow(
+		`SELECT uploader_session_id FROM photos
+		 WHERE content_hash=(SELECT content_hash FROM photos ORDER BY id DESC LIMIT 1)`,
+	).Scan(&sid2); err != nil {
+		t.Fatal(err)
+	}
+	if sid2 != token {
+		t.Errorf("second upload session = %q, want same token %q", sid2, token)
 	}
 }
 

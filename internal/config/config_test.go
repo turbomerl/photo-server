@@ -42,6 +42,9 @@ func TestLoadDefaults(t *testing.T) {
 	if c.ThumbPx != 400 || c.ThumbQuality != 80 {
 		t.Errorf("thumb defaults = (%d,%d), want (400,80)", c.ThumbPx, c.ThumbQuality)
 	}
+	if c.SessionMaxAge != 30*24*time.Hour {
+		t.Errorf("SessionMaxAge = %v, want 720h", c.SessionMaxAge)
+	}
 	if c.VipsThumbnailBin != "vipsthumbnail" {
 		t.Errorf("VipsThumbnailBin = %q, want vipsthumbnail", c.VipsThumbnailBin)
 	}
@@ -69,6 +72,7 @@ func TestLoadExplicitOverrides(t *testing.T) {
 	t.Setenv("PHOTO_SERVER_JPEG_QUALITY", "70")
 	t.Setenv("PHOTO_SERVER_THUMB_PX", "256")
 	t.Setenv("PHOTO_SERVER_THUMB_QUALITY", "60")
+	t.Setenv("PHOTO_SERVER_SESSION_MAX_AGE", "48h")
 	t.Setenv("PHOTO_SERVER_VIPSTHUMBNAIL_BIN", "/usr/bin/vipsthumbnail")
 
 	c, err := Load()
@@ -84,6 +88,9 @@ func TestLoadExplicitOverrides(t *testing.T) {
 	}
 	if c.ThumbPx != 256 || c.ThumbQuality != 60 {
 		t.Errorf("thumb knobs = (%d,%d), want (256,60)", c.ThumbPx, c.ThumbQuality)
+	}
+	if c.SessionMaxAge != 48*time.Hour {
+		t.Errorf("SessionMaxAge = %v, want 48h", c.SessionMaxAge)
 	}
 	if c.VipsThumbnailBin != "/usr/bin/vipsthumbnail" {
 		t.Errorf("VipsThumbnailBin = %q", c.VipsThumbnailBin)

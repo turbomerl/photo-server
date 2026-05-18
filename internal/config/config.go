@@ -50,6 +50,9 @@ type Config struct {
 	// VipsThumbnailBin is the vipsthumbnail executable; resolved via
 	// PATH at startup. Overridable for the locked-down systemd unit.
 	VipsThumbnailBin string
+	// SessionMaxAge is the guest-session cookie lifetime. PRD: "no
+	// expiry within the event window" — default well beyond a wedding.
+	SessionMaxAge time.Duration
 }
 
 const envPrefix = "PHOTO_SERVER_"
@@ -71,6 +74,7 @@ func Load() (Config, error) {
 		ThumbPx:          400,
 		ThumbQuality:     80,
 		VipsThumbnailBin: getenv("VIPSTHUMBNAIL_BIN", "vipsthumbnail"),
+		SessionMaxAge:    30 * 24 * time.Hour, // ~30 days
 	}
 
 	if v := getenv("DATA_DIR", ""); v != "" {
@@ -118,6 +122,14 @@ func Load() (Config, error) {
 	}
 	if c.JPEGQuality > 100 || c.ThumbQuality > 100 {
 		return Config{}, fmt.Errorf("%sJPEG_QUALITY/THUMB_QUALITY must be 1–100", envPrefix)
+	}
+
+	if v := getenv("SESSION_MAX_AGE", ""); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil || d <= 0 {
+			return Config{}, fmt.Errorf("%sSESSION_MAX_AGE %q: must be a positive duration", envPrefix, v)
+		}
+		c.SessionMaxAge = d
 	}
 
 	abs, err := filepath.Abs(c.DataDir)
