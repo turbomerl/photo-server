@@ -7,30 +7,9 @@
 
   var input = document.getElementById("ps-shot");
   var strip = document.getElementById("ps-strip");
-  var nameEl = document.getElementById("ps-name");
   if (!input || !strip) return;
 
-  // --- optional display name -> /session (kgu.14) -------------------
-  function applySession(s) {
-    if (s && s.display_name && nameEl && !nameEl.value) {
-      nameEl.value = s.display_name;
-    }
-  }
-  if (window.psSession) applySession(window.psSession);
-  document.addEventListener("ps:session", function (e) { applySession(e.detail); });
-
-  if (nameEl) {
-    nameEl.addEventListener("change", function () {
-      var v = nameEl.value.trim();
-      if (!v) return;
-      fetch("/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ display_name: v }),
-        credentials: "same-origin"
-      }).catch(function () {});
-    });
-  }
+  // The shared display-name field is wired by session.js.
 
   // --- one captured frame -> a "developing" tile -> /upload ---------
   function makeTile(objURL) {

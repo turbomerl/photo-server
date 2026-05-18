@@ -92,6 +92,60 @@ func TestAllPhotosAndByHash(t *testing.T) {
 	}
 }
 
+func TestSessionAndGalleryPhotoFeeds(t *testing.T) {
+	s := openTemp(t)
+	if err := s.UpsertSession("sessA", "A"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpsertSession("sessB", "B"); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	mk := func(hash, sess string, hidden bool) {
+		if _, _, err := s.InsertPhoto(Photo{
+			ContentHash: hash, MIME: "image/jpeg", UploaderSessionID: sess,
+			UploadedAt: now,
+		}); err != nil {
+			t.Fatalf("insert %s: %v", hash, err)
+		}
+		if hidden {
+			if _, err := s.DB().Exec(
+				`UPDATE photos SET hidden_at=1 WHERE content_hash=?`, hash); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	mk("p1", "sessA", false)
+	mk("p2", "sessB", false)
+	mk("p3", "sessA", true) // hidden
+	mk("p4", "sessA", false)
+
+	// SessionPhotos: only sessA's visible, newest (highest id) first.
+	mine, err := s.SessionPhotos("sessA", 10)
+	if err != nil {
+		t.Fatalf("SessionPhotos: %v", err)
+	}
+	if len(mine) != 2 || mine[0].Hash != "p4" || mine[1].Hash != "p1" {
+		t.Fatalf("SessionPhotos = %+v, want [p4 p1]", mine)
+	}
+
+	// GalleryPhotos: all visible newest-first, keyset paginated.
+	page1, err := s.GalleryPhotos(0, 2)
+	if err != nil {
+		t.Fatalf("GalleryPhotos p1: %v", err)
+	}
+	if len(page1) != 2 || page1[0].Hash != "p4" || page1[1].Hash != "p2" {
+		t.Fatalf("gallery page1 = %+v, want [p4 p2]", page1)
+	}
+	page2, err := s.GalleryPhotos(page1[1].ID, 2)
+	if err != nil {
+		t.Fatalf("GalleryPhotos p2: %v", err)
+	}
+	if len(page2) != 1 || page2[0].Hash != "p1" {
+		t.Fatalf("gallery page2 = %+v, want [p1] (p3 hidden)", page2)
+	}
+}
+
 func TestInsertPhotoSessionFK(t *testing.T) {
 	s := openTemp(t)
 

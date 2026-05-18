@@ -114,7 +114,58 @@ body {
 .shot.failed { border-color: #c33; }
 .shot.failed .cap { color: #c33; }
 
-/* ---- placeholders (Upload / Gallery shells) ---- */
+/* ---- Upload ---- */
+.upload { max-width: 34rem; margin: 0 auto; }
+.bigbtn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 22px; margin: 8px 0 4px;
+  background: var(--accent); color: #fff; font-weight: 600; font-size: 18px;
+  border-radius: 14px; cursor: pointer; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.bigbtn:active { filter: brightness(.94); }
+.bigbtn-ico { font-size: 24px; line-height: 1; }
+.ns-form { margin: 14px 0; }
+
+.queue { list-style: none; margin: 14px 0; }
+.qrow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-gap: 4px 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.qname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qstate { color: var(--muted); font-size: 13px; }
+.qbar {
+  grid-column: 1 / -1;
+  height: 6px; border-radius: 3px; background: var(--line); overflow: hidden;
+}
+.qbar i { display: block; height: 100%; width: 0; background: var(--accent);
+  transition: width .2s ease; }
+.qrow.done .qbar i { background: #3a3; }
+.qrow.failed .qstate { color: #c33; }
+.qrow.failed { cursor: pointer; }
+
+.rec-h { font-size: 1rem; margin: 22px 0 10px; color: var(--muted); }
+
+/* ---- photo grid (Upload "recent" + Gallery) ---- */
+.grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 4px;
+}
+.cell { position: relative; aspect-ratio: 1 / 1; background: var(--line); border-radius: 3px; overflow: hidden; }
+.cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cell.skeleton { animation: ps-pulse 1.2s ease-in-out infinite; }
+@keyframes ps-pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+.empty { color: var(--muted); font-size: 14px; padding: 14px 0; }
+.sentinel { height: 1px; }
+
+/* ---- placeholders (Gallery shell, pre-kgu.17) ---- */
 .placeholder { max-width: 30rem; margin: 8vh auto 0; text-align: center; }
 .placeholder h1 { font-size: 1.5rem; margin-bottom: 10px; }
 .placeholder p { color: var(--muted); margin: 8px 0; }

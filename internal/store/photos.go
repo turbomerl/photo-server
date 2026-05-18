@@ -89,6 +89,69 @@ func (s *Store) AllPhotos() ([]PhotoRef, error) {
 	return out, rows.Err()
 }
 
+// PhotoListItem is one tile in the gallery / "my uploads" feeds.
+type PhotoListItem struct {
+	ID          int64  `json:"id"`
+	Hash        string `json:"hash"`
+	MIME        string `json:"mime"`
+	DisplayName string `json:"display_name"`
+	UploadedAt  int64  `json:"uploaded_at"` // unix seconds (UTC)
+}
+
+const scanCols = `id, content_hash, mime, display_name, uploaded_at`
+
+func scanPhotoList(rows interface {
+	Next() bool
+	Scan(...any) error
+	Err() error
+}) ([]PhotoListItem, error) {
+	var out []PhotoListItem
+	for rows.Next() {
+		var p PhotoListItem
+		if err := rows.Scan(&p.ID, &p.Hash, &p.MIME, &p.DisplayName, &p.UploadedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// SessionPhotos returns a session's own visible uploads, newest first
+// (kgu.16 "your recent uploads"). limit is capped by the caller.
+func (s *Store) SessionPhotos(sessionID string, limit int) ([]PhotoListItem, error) {
+	rows, err := s.db.Query(
+		`SELECT `+scanCols+` FROM photos
+		 WHERE uploader_session_id = ? AND hidden_at IS NULL
+		 ORDER BY id DESC LIMIT ?`, sessionID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanPhotoList(rows)
+}
+
+// GalleryPhotos returns visible photos newest-first for the gallery
+// grid (kgu.17). Keyset pagination: pass beforeID=0 for the first
+// page, then the smallest id from the previous page. Uses the
+// idx_photos_visible_recent partial index.
+func (s *Store) GalleryPhotos(beforeID int64, limit int) ([]PhotoListItem, error) {
+	q := `SELECT ` + scanCols + ` FROM photos WHERE hidden_at IS NULL`
+	args := []any{}
+	if beforeID > 0 {
+		q += ` AND id < ?`
+		args = append(args, beforeID)
+	}
+	q += ` ORDER BY id DESC LIMIT ?`
+	args = append(args, limit)
+
+	rows, err := s.db.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanPhotoList(rows)
+}
+
 // PhotoByHash looks up a photo's mime by content hash (ok=false if
 // absent). Used by the lazy-regenerate-on-miss thumbnail route.
 func (s *Store) PhotoByHash(hash string) (PhotoRef, bool, error) {

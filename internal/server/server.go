@@ -71,6 +71,8 @@ func New(addr string, d Deps) *Server {
 	mux.HandleFunc("GET /gallery", s.handleGalleryPage)
 	mux.HandleFunc("GET /static/app.css", s.handleAppCSS)
 	mux.HandleFunc("GET /static/polaroid.js", s.handlePolaroidJS)
+	mux.HandleFunc("GET /static/upload.js", s.handleUploadJS)
+	mux.HandleFunc("GET /api/uploads/mine", s.handleMyUploads)
 
 	s.httpSrv = &http.Server{
 		Addr:    addr,

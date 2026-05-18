@@ -1,9 +1,34 @@
 {{define "title"}}Upload · Wedding photos{{end}}
 {{define "main"}}
-<section class="placeholder">
-  <h1>Upload</h1>
-  <p>Pick photos from your phone to add to the shared album.</p>
-  <p class="soon">Coming together soon — for now, use
-  <a href="/">Polaroid</a> to snap and share instantly.</p>
+<section class="upload">
+  <p class="hint">Pick photos from your phone — they're added to the
+  shared album. Set your name above so everyone knows whose they are.</p>
+
+  <label class="bigbtn" id="up-pick">
+    <input id="up-input" type="file" accept="image/*" multiple hidden>
+    <span class="bigbtn-ico" aria-hidden="true">＋</span>
+    <span>Add photos</span>
+  </label>
+
+  <noscript>
+    <form class="ns-form" action="/upload" method="post"
+          enctype="multipart/form-data">
+      <p class="noscript">Without JavaScript you can still upload:</p>
+      <input type="file" name="file" accept="image/*" multiple>
+      <button type="submit">Upload</button>
+    </form>
+  </noscript>
+
+  <ul id="up-queue" class="queue" aria-live="polite"></ul>
+
+  <h2 class="rec-h">Your recent uploads</h2>
+  <ul id="up-recent" class="grid">
+    {{range .Recent}}
+    <li class="cell"><img loading="lazy" src="/thumb/{{.Hash}}" alt=""></li>
+    {{else}}
+    <li class="empty" id="up-empty">Nothing yet — add your first photo.</li>
+    {{end}}
+  </ul>
 </section>
 {{end}}
+{{define "scripts"}}<script src="/static/upload.js" defer></script>{{end}}

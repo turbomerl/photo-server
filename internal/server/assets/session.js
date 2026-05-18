@@ -24,6 +24,26 @@
     } catch (e) { /* old browsers: window.psSession still set */ }
   }
 
+  // The shared display-name field (base.html) is wired here once so
+  // every page (Polaroid / Upload / Gallery) behaves the same.
+  function wireName(s) {
+    var el = document.getElementById("ps-name");
+    if (!el) return;
+    if (s && s.display_name && !el.value) el.value = s.display_name;
+    if (el.dataset.psWired) return;
+    el.dataset.psWired = "1";
+    el.addEventListener("change", function () {
+      var v = el.value.trim();
+      if (!v) return;
+      fetch("/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ display_name: v }),
+        credentials: "same-origin"
+      }).catch(function () {});
+    });
+  }
+
   var saved = lsGet();
   var req;
   if (saved) {
@@ -42,7 +62,8 @@
   req.then(function (r) { return r.json(); })
     .then(function (s) {
       if (s && s.token) lsSet(s.token);
+      wireName(s);
       publish(s);
     })
-    .catch(function () { publish(null); });
+    .catch(function () { publish(null); wireName(null); });
 })();
