@@ -41,15 +41,18 @@
     var e = document.getElementById("up-empty");
     if (e && e.parentNode) e.parentNode.removeChild(e);
   }
-  function addRecentTile(thumbURL) {
+  function addRecentTile(thumbURL, hash) {
     dropEmpty();
     var li = document.createElement("li");
     li.className = "cell";
+    var a = document.createElement("a");
+    a.href = "/p/" + hash;
     var img = document.createElement("img");
     img.alt = "";
     img.loading = "lazy";
     img.src = thumbURL;
-    li.appendChild(img);
+    a.appendChild(img);
+    li.appendChild(a);
     if (recentEl.firstChild) recentEl.insertBefore(li, recentEl.firstChild);
     else recentEl.appendChild(li);
   }
@@ -121,7 +124,7 @@
         item.row.bar.style.width = "100%";
         item.row.state.textContent = u.deduped ? "already shared ✓" : "shared ✓";
         item.row.el.className = "qrow done";
-        if (u.thumb_url) addRecentTile(u.thumb_url);
+        if (u.thumb_url) addRecentTile(u.thumb_url, u.hash);
         setTimeout(function () {
           if (item.row.el.parentNode) item.row.el.parentNode.removeChild(item.row.el);
         }, 2500);

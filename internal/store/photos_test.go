@@ -146,6 +146,37 @@ func TestSessionAndGalleryPhotoFeeds(t *testing.T) {
 	}
 }
 
+func TestPhotoMetaVisibleOnly(t *testing.T) {
+	s := openTemp(t)
+	if _, _, err := s.InsertPhoto(Photo{
+		ContentHash: "vis", MIME: "image/heic",
+		OriginalFilename: "IMG_1234.HEIC", DisplayName: "Aunt Sue",
+		UploadedAt: time.Now(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	m, ok, err := s.PhotoMeta("vis")
+	if err != nil || !ok {
+		t.Fatalf("PhotoMeta(vis): ok=%v err=%v", ok, err)
+	}
+	if m.MIME != "image/heic" || m.OriginalFilename != "IMG_1234.HEIC" || m.DisplayName != "Aunt Sue" {
+		t.Fatalf("PhotoMeta = %+v", m)
+	}
+
+	if _, ok, _ := s.PhotoMeta("nope"); ok {
+		t.Error("unknown hash should be ok=false")
+	}
+
+	// Hidden photos must not be reachable via direct URL.
+	if _, err := s.DB().Exec(
+		`UPDATE photos SET hidden_at=1 WHERE content_hash='vis'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, _ := s.PhotoMeta("vis"); ok {
+		t.Error("hidden photo should report ok=false")
+	}
+}
+
 func TestInsertPhotoSessionFK(t *testing.T) {
 	s := openTemp(t)
 

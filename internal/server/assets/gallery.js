@@ -31,10 +31,14 @@
   function appendTile(p) {
     var li = document.createElement("li");
     li.className = "cell skeleton";
+    var a = document.createElement("a");
+    a.href = "/p/" + p.hash;
+    a.setAttribute("data-name", p.display_name || "");
     var img = document.createElement("img");
     img.alt = "";
     img.setAttribute("data-src", p.thumb_url);
-    li.appendChild(img);
+    a.appendChild(img);
+    li.appendChild(a);
     grid.appendChild(li);
     lazy.observe(img);
   }

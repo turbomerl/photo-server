@@ -1,0 +1,13 @@
+{{define "title"}}Photo · Wedding photos{{end}}
+{{define "main"}}
+<section class="photoview">
+  <p><a class="back" href="/gallery">‹ Back to gallery</a></p>
+  <div class="frame">
+    <img src="/photo/{{.ViewHash}}" alt="">
+  </div>
+  <p class="by">{{if .ViewName}}Shared by {{.ViewName}}{{else}}Shared anonymously{{end}}</p>
+  <p>
+    <a class="dl" href="/original/{{.ViewHash}}" download>⤓ Download original</a>
+  </p>
+</section>
+{{end}}

@@ -152,6 +152,32 @@ func (s *Store) GalleryPhotos(beforeID int64, limit int) ([]PhotoListItem, error
 	return scanPhotoList(rows)
 }
 
+// PhotoMeta is what the full-size view / download routes need (kgu.18).
+type PhotoMeta struct {
+	Hash             string
+	MIME             string
+	OriginalFilename string
+	DisplayName      string
+}
+
+// PhotoMeta looks up a *visible* photo by content hash. Hidden photos
+// (admin-hidden, kgu.19) report ok=false so a direct /photo, /original
+// or /p URL can't bypass moderation.
+func (s *Store) PhotoMeta(hash string) (PhotoMeta, bool, error) {
+	m := PhotoMeta{Hash: hash}
+	err := s.db.QueryRow(
+		`SELECT mime, original_filename, display_name FROM photos
+		 WHERE content_hash = ? AND hidden_at IS NULL`, hash,
+	).Scan(&m.MIME, &m.OriginalFilename, &m.DisplayName)
+	if errors.Is(err, sql.ErrNoRows) {
+		return PhotoMeta{}, false, nil
+	}
+	if err != nil {
+		return PhotoMeta{}, false, err
+	}
+	return m, true, nil
+}
+
 // PhotoByHash looks up a photo's mime by content hash (ok=false if
 // absent). Used by the lazy-regenerate-on-miss thumbnail route.
 func (s *Store) PhotoByHash(hash string) (PhotoRef, bool, error) {

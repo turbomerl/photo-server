@@ -24,6 +24,9 @@ var uploadJS []byte
 //go:embed assets/gallery.js
 var galleryJS []byte
 
+//go:embed assets/viewer.js
+var viewerJS []byte
+
 // One template set per page: base.html provides the shell + bottom
 // nav; the page file overrides the title/main/scripts blocks.
 func mustPage(page string) *template.Template {
@@ -35,6 +38,7 @@ var (
 	tplPolaroid = mustPage("polaroid.html")
 	tplUpload   = mustPage("upload.html")
 	tplGallery  = mustPage("gallery.html")
+	tplPhoto    = mustPage("photo.html")
 )
 
 type pageData struct {
@@ -51,6 +55,10 @@ type pageData struct {
 	// keyset cursor for infinite scroll (0 = no more).
 	Photos     []store.PhotoListItem
 	NextBefore int64
+	// ViewHash/ViewName drive the server-rendered single-photo page
+	// (kgu.18, the no-JS fallback for the lightbox).
+	ViewHash string
+	ViewName string
 }
 
 // galleryPageSize is the gallery page size (server first page + each
@@ -127,6 +135,34 @@ func (s *Server) handleGalleryPage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handlePhotoPage is the server-rendered single-photo view (kgu.18):
+// the no-JS fallback that thumbnails link to. gallery.js upgrades this
+// into an in-page lightbox when JavaScript is available.
+func (s *Server) handlePhotoPage(w http.ResponseWriter, r *http.Request) {
+	hash := r.PathValue("hash")
+	if !isHexSHA256(hash) {
+		http.Error(w, "bad hash", http.StatusBadRequest)
+		return
+	}
+	meta, ok, err := s.st.PhotoMeta(hash)
+	if err != nil {
+		s.log.Error("photo page meta", "err", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	_, name := s.ensureName(w, r)
+	s.renderPage(w, tplPhoto, pageData{
+		Active:   "gallery",
+		Name:     name,
+		ViewHash: meta.Hash,
+		ViewName: meta.DisplayName,
+	})
+}
+
 // nextCursor is the keyset cursor for the page after `photos`: the
 // smallest id seen, or 0 when the page was not full (no more rows).
 func nextCursor(photos []store.PhotoListItem) int64 {
@@ -158,4 +194,10 @@ func (s *Server) handleGalleryJS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	_, _ = w.Write(galleryJS)
+}
+
+func (s *Server) handleViewerJS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	_, _ = w.Write(viewerJS)
 }

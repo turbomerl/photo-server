@@ -50,6 +50,13 @@
           real.onload = function () { tile.img.src = u.thumb_url; };
           real.src = u.thumb_url; // kgu.13 lazily regenerates on miss
         }
+        if (u.hash && tile.img.parentNode === tile.li) {
+          // Make the developed shot tappable into the full-size view.
+          var a = document.createElement("a");
+          a.href = "/p/" + u.hash;
+          tile.li.replaceChild(a, tile.img);
+          a.appendChild(tile.img);
+        }
       })
       .catch(function () {
         tile.li.className = "shot failed";

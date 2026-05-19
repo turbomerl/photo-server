@@ -24,7 +24,7 @@
   <h2 class="rec-h">Your recent uploads</h2>
   <ul id="up-recent" class="grid">
     {{range .Recent}}
-    <li class="cell"><img loading="lazy" src="/thumb/{{.Hash}}" alt=""></li>
+    <li class="cell"><a href="/p/{{.Hash}}"><img loading="lazy" src="/thumb/{{.Hash}}" alt=""></a></li>
     {{else}}
     <li class="empty" id="up-empty">Nothing yet — add your first photo.</li>
     {{end}}

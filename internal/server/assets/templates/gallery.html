@@ -3,7 +3,7 @@
 <section class="gallery">
   <ul id="gal-grid" class="grid">
     {{range .Photos}}
-    <li class="cell"><img loading="lazy" src="/thumb/{{.Hash}}" alt=""></li>
+    <li class="cell"><a href="/p/{{.Hash}}" data-name="{{.DisplayName}}"><img loading="lazy" src="/thumb/{{.Hash}}" alt=""></a></li>
     {{else}}
     <li class="empty" id="gal-empty">No photos yet — be the first to
     share from <a href="/">Polaroid</a> or <a href="/upload">Upload</a>.</li>
@@ -12,4 +12,5 @@
   <div id="gal-sentinel" class="sentinel" data-next-before="{{.NextBefore}}"></div>
 </section>
 {{end}}
-{{define "scripts"}}<script src="/static/gallery.js" defer></script>{{end}}
+{{define "scripts"}}<script src="/static/gallery.js" defer></script>
+<script src="/static/viewer.js" defer></script>{{end}}

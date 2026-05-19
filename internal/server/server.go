@@ -73,8 +73,14 @@ func New(addr string, d Deps) *Server {
 	mux.HandleFunc("GET /static/polaroid.js", s.handlePolaroidJS)
 	mux.HandleFunc("GET /static/upload.js", s.handleUploadJS)
 	mux.HandleFunc("GET /static/gallery.js", s.handleGalleryJS)
+	mux.HandleFunc("GET /static/viewer.js", s.handleViewerJS)
 	mux.HandleFunc("GET /api/uploads/mine", s.handleMyUploads)
 	mux.HandleFunc("GET /api/photos", s.handlePhotos)
+
+	// Full-size view + original download (kgu.18).
+	mux.HandleFunc("GET /p/{hash}", s.handlePhotoPage)
+	mux.HandleFunc("GET /photo/{hash}", s.handlePhotoView)
+	mux.HandleFunc("GET /original/{hash}", s.handleOriginalDownload)
 
 	s.httpSrv = &http.Server{
 		Addr:    addr,
