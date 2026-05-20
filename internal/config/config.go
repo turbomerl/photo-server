@@ -53,6 +53,9 @@ type Config struct {
 	// SessionMaxAge is the guest-session cookie lifetime. PRD: "no
 	// expiry within the event window" — default well beyond a wedding.
 	SessionMaxAge time.Duration
+	// AdminPassword gates /admin (HTTP Basic). Empty disables the
+	// admin surface entirely (fail-closed if not configured — PRD F13).
+	AdminPassword string
 }
 
 const envPrefix = "PHOTO_SERVER_"
@@ -75,6 +78,7 @@ func Load() (Config, error) {
 		ThumbQuality:     80,
 		VipsThumbnailBin: getenv("VIPSTHUMBNAIL_BIN", "vipsthumbnail"),
 		SessionMaxAge:    30 * 24 * time.Hour, // ~30 days
+		AdminPassword:    getenv("ADMIN_PASSWORD", ""),
 	}
 
 	if v := getenv("DATA_DIR", ""); v != "" {

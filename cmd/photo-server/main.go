@@ -101,14 +101,15 @@ func run() error {
 	}
 
 	srv := server.New(cfg.Addr, server.Deps{
-		Log:      logger,
-		Version:  version,
-		Store:    st,
-		Blobs:    blobs,
-		Convert:  pool,
-		Conv:     conv,
-		Sessions: session.NewManager(st, cfg.SessionMaxAge),
-		MaxBody:  cfg.MaxUploadBytes,
+		Log:           logger,
+		Version:       version,
+		Store:         st,
+		Blobs:         blobs,
+		Convert:       pool,
+		Conv:          conv,
+		Sessions:      session.NewManager(st, cfg.SessionMaxAge),
+		MaxBody:       cfg.MaxUploadBytes,
+		AdminPassword: cfg.AdminPassword,
 	})
 	return srv.Run(ctx, cfg.ShutdownTimeout)
 }

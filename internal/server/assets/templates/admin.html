@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>photo-server admin</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="admin">
+<header class="adm-hd">
+  <div>
+    <h1>Admin</h1>
+    <p class="adm-meta">
+      {{.Visible}} visible · {{.Hidden}} hidden ·
+      photos {{bytes .UsedBytes}} ·
+      disk {{bytes .FSFree}} free / {{bytes .FSTotal}}
+    </p>
+  </div>
+  <form method="post" action="/admin/shutdown" class="adm-shut"
+        onsubmit="return confirm('Shut down the photo server?');">
+    <button type="submit">⏻ Shut down</button>
+  </form>
+</header>
+
+<p><a class="adm-back" href="/gallery">← Guest gallery</a></p>
+
+<ul class="adm-list">
+{{range .Photos}}
+  <li class="adm-row{{if .HiddenAt}} adm-hidden{{end}}">
+    <a class="adm-thumb" href="/p/{{.Hash}}" target="_blank" rel="noopener">
+      <img src="/thumb/{{.Hash}}" alt="">
+    </a>
+    <div class="adm-info">
+      <div class="adm-line">
+        {{if .OriginalFilename}}{{.OriginalFilename}}{{else}}(no filename){{end}}
+      </div>
+      <div class="adm-sub">
+        {{if .DisplayName}}by {{.DisplayName}}{{else}}anonymous{{end}}
+        · {{agoUnix .UploadedAt}}
+        {{if .HiddenAt}} · <span class="adm-badge">hidden</span>{{end}}
+        · <code>{{slice .Hash 0 10}}…</code>
+      </div>
+    </div>
+    <div class="adm-acts">
+      {{if .HiddenAt}}
+        <form method="post" action="/admin/photos/{{.Hash}}/unhide">
+          <button type="submit">Unhide</button>
+        </form>
+      {{else}}
+        <form method="post" action="/admin/photos/{{.Hash}}/hide">
+          <button type="submit">Hide</button>
+        </form>
+      {{end}}
+      <form method="post" action="/admin/photos/{{.Hash}}/delete"
+            onsubmit="return confirm('Delete this photo? The original cannot be recovered.');">
+        <button type="submit" class="adm-danger">Delete</button>
+      </form>
+    </div>
+  </li>
+{{else}}
+  <li class="adm-empty">No photos yet.</li>
+{{end}}
+</ul>
+</body>
+</html>

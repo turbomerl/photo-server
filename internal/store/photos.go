@@ -152,6 +152,90 @@ func (s *Store) GalleryPhotos(beforeID int64, limit int) ([]PhotoListItem, error
 	return scanPhotoList(rows)
 }
 
+// AdminPhotoRow is a row for the admin dashboard (kgu.19) — like
+// PhotoListItem but also exposes hidden state and original filename.
+type AdminPhotoRow struct {
+	Hash             string
+	MIME             string
+	DisplayName      string
+	OriginalFilename string
+	UploadedAt       int64
+	HiddenAt         *int64 // nil = visible
+}
+
+// AdminPhotos lists the most-recent photos (visible AND hidden) for
+// the operator dashboard, newest first.
+func (s *Store) AdminPhotos(limit int) ([]AdminPhotoRow, error) {
+	rows, err := s.db.Query(
+		`SELECT content_hash, mime, display_name, original_filename,
+		        uploaded_at, hidden_at
+		 FROM photos ORDER BY id DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []AdminPhotoRow
+	for rows.Next() {
+		var r AdminPhotoRow
+		if err := rows.Scan(&r.Hash, &r.MIME, &r.DisplayName,
+			&r.OriginalFilename, &r.UploadedAt, &r.HiddenAt); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// PhotoCounts returns (visible, hidden) — for the admin header.
+// COALESCE guards against SUM(...) returning NULL when the table is
+// empty, which would fail to scan into int.
+func (s *Store) PhotoCounts() (visible, hidden int, err error) {
+	err = s.db.QueryRow(
+		`SELECT
+		   COALESCE(SUM(CASE WHEN hidden_at IS NULL THEN 1 ELSE 0 END), 0),
+		   COALESCE(SUM(CASE WHEN hidden_at IS NOT NULL THEN 1 ELSE 0 END), 0)
+		 FROM photos`).Scan(&visible, &hidden)
+	return visible, hidden, err
+}
+
+// SetHidden marks a photo hidden (now) or visible (NULL). Hidden
+// photos are excluded from /api/photos, /thumb, /photo, /original and
+// /p — so a hide is immediate, no rebuild required.
+func (s *Store) SetHidden(hash string, hidden bool) error {
+	var args []any
+	q := `UPDATE photos SET hidden_at = `
+	if hidden {
+		q += `?`
+		args = append(args, time.Now().UTC().Unix())
+	} else {
+		q += `NULL`
+	}
+	q += ` WHERE content_hash = ?`
+	args = append(args, hash)
+	_, err := s.db.Exec(q, args...)
+	return err
+}
+
+// DeletePhoto removes the row and returns the mime so the caller can
+// clean up the on-disk blobs (best-effort). Missing row → ok=false.
+func (s *Store) DeletePhoto(hash string) (mime string, ok bool, err error) {
+	err = s.db.QueryRow(
+		`SELECT mime FROM photos WHERE content_hash = ?`, hash,
+	).Scan(&mime)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	if _, err := s.db.Exec(
+		`DELETE FROM photos WHERE content_hash = ?`, hash); err != nil {
+		return "", false, err
+	}
+	return mime, true, nil
+}
+
 // PhotoMeta is what the full-size view / download routes need (kgu.18).
 type PhotoMeta struct {
 	Hash             string

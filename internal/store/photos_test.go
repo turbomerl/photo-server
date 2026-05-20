@@ -146,6 +146,68 @@ func TestSessionAndGalleryPhotoFeeds(t *testing.T) {
 	}
 }
 
+func TestAdminPhotosCountsHideDelete(t *testing.T) {
+	s := openTemp(t)
+	for _, h := range []string{"a", "b", "c"} {
+		if _, _, err := s.InsertPhoto(Photo{
+			ContentHash: h, MIME: "image/jpeg",
+			OriginalFilename: h + ".jpg",
+			UploadedAt:       time.Now(),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Hide "b"; admin list still sees it, gallery feed does not.
+	if err := s.SetHidden("b", true); err != nil {
+		t.Fatalf("SetHidden: %v", err)
+	}
+	v, hh, err := s.PhotoCounts()
+	if err != nil || v != 2 || hh != 1 {
+		t.Fatalf("counts (%d,%d) err=%v, want (2,1)", v, hh, err)
+	}
+	rows, err := s.AdminPhotos(10)
+	if err != nil || len(rows) != 3 {
+		t.Fatalf("AdminPhotos len=%d err=%v, want 3", len(rows), err)
+	}
+	var sawHidden bool
+	for _, r := range rows {
+		if r.Hash == "b" {
+			if r.HiddenAt == nil || *r.HiddenAt <= 0 {
+				t.Errorf("b should have HiddenAt set, got %v", r.HiddenAt)
+			}
+			sawHidden = true
+		}
+	}
+	if !sawHidden {
+		t.Error("AdminPhotos must include hidden rows")
+	}
+
+	// Unhide brings it back to visible.
+	if err := s.SetHidden("b", false); err != nil {
+		t.Fatal(err)
+	}
+	v, hh, _ = s.PhotoCounts()
+	if v != 3 || hh != 0 {
+		t.Errorf("after unhide counts = (%d,%d), want (3,0)", v, hh)
+	}
+
+	// Delete "a" → row gone, mime returned for blob cleanup.
+	mime, ok, err := s.DeletePhoto("a")
+	if err != nil || !ok || mime != "image/jpeg" {
+		t.Fatalf("DeletePhoto(a) mime=%q ok=%v err=%v", mime, ok, err)
+	}
+	if _, _, err := s.PhotoMeta("a"); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, _ := s.PhotoMeta("a"); ok {
+		t.Error("deleted photo should not be reachable via PhotoMeta")
+	}
+	// Deleting again → ok=false, no error.
+	if _, ok, err := s.DeletePhoto("a"); err != nil || ok {
+		t.Errorf("re-DeletePhoto(a) ok=%v err=%v, want (false, nil)", ok, err)
+	}
+}
+
 func TestPhotoMetaVisibleOnly(t *testing.T) {
 	s := openTemp(t)
 	if _, _, err := s.InsertPhoto(Photo{

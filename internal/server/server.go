@@ -20,40 +20,43 @@ import (
 // Deps are the runtime dependencies the handlers share. Grouping them
 // keeps New stable as upload/gallery/admin/slideshow are added.
 type Deps struct {
-	Log      *slog.Logger
-	Version  string
-	Store    *store.Store
-	Blobs    *blobstore.Store
-	Convert  *convert.Pool      // async pool; nil if libvips tooling absent
-	Conv     *convert.Converter // sync renderer for lazy-regenerate-on-miss
-	Sessions *session.Manager
-	MaxBody  int64
+	Log           *slog.Logger
+	Version       string
+	Store         *store.Store
+	Blobs         *blobstore.Store
+	Convert       *convert.Pool      // async pool; nil if libvips tooling absent
+	Conv          *convert.Converter // sync renderer for lazy-regenerate-on-miss
+	Sessions      *session.Manager
+	MaxBody       int64
+	AdminPassword string
 }
 
 // Server wraps the HTTP server and its dependencies.
 type Server struct {
-	log      *slog.Logger
-	version  string
-	st       *store.Store
-	blobs    *blobstore.Store
-	conv     *convert.Pool
-	convr    *convert.Converter
-	sessions *session.Manager
-	maxBody  int64
-	httpSrv  *http.Server
+	log           *slog.Logger
+	version       string
+	st            *store.Store
+	blobs         *blobstore.Store
+	conv          *convert.Pool
+	convr         *convert.Converter
+	sessions      *session.Manager
+	maxBody       int64
+	adminPassword string
+	httpSrv       *http.Server
 }
 
 // New builds a Server listening on addr with the given dependencies.
 func New(addr string, d Deps) *Server {
 	s := &Server{
-		log:      d.Log,
-		version:  d.Version,
-		st:       d.Store,
-		blobs:    d.Blobs,
-		conv:     d.Convert,
-		convr:    d.Conv,
-		sessions: d.Sessions,
-		maxBody:  d.MaxBody,
+		log:           d.Log,
+		version:       d.Version,
+		st:            d.Store,
+		blobs:         d.Blobs,
+		conv:          d.Convert,
+		convr:         d.Conv,
+		sessions:      d.Sessions,
+		maxBody:       d.MaxBody,
+		adminPassword: d.AdminPassword,
 	}
 
 	mux := http.NewServeMux()
@@ -81,6 +84,14 @@ func New(addr string, d Deps) *Server {
 	mux.HandleFunc("GET /p/{hash}", s.handlePhotoPage)
 	mux.HandleFunc("GET /photo/{hash}", s.handlePhotoView)
 	mux.HandleFunc("GET /original/{hash}", s.handleOriginalDownload)
+
+	// Admin (kgu.19) — gated by HTTP Basic against AdminPassword; if
+	// the password is empty every admin route 404s (fail-closed).
+	mux.HandleFunc("GET /admin", s.handleAdminDashboard)
+	mux.HandleFunc("POST /admin/photos/{hash}/hide", s.handleAdminHide)
+	mux.HandleFunc("POST /admin/photos/{hash}/unhide", s.handleAdminUnhide)
+	mux.HandleFunc("POST /admin/photos/{hash}/delete", s.handleAdminDelete)
+	mux.HandleFunc("POST /admin/shutdown", s.handleAdminShutdown)
 
 	s.httpSrv = &http.Server{
 		Addr:    addr,

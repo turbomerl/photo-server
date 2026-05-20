@@ -45,6 +45,9 @@ func TestLoadDefaults(t *testing.T) {
 	if c.SessionMaxAge != 30*24*time.Hour {
 		t.Errorf("SessionMaxAge = %v, want 720h", c.SessionMaxAge)
 	}
+	if c.AdminPassword != "" {
+		t.Errorf("AdminPassword default = %q, want empty (admin fail-closed)", c.AdminPassword)
+	}
 	if c.VipsThumbnailBin != "vipsthumbnail" {
 		t.Errorf("VipsThumbnailBin = %q, want vipsthumbnail", c.VipsThumbnailBin)
 	}
@@ -73,6 +76,7 @@ func TestLoadExplicitOverrides(t *testing.T) {
 	t.Setenv("PHOTO_SERVER_THUMB_PX", "256")
 	t.Setenv("PHOTO_SERVER_THUMB_QUALITY", "60")
 	t.Setenv("PHOTO_SERVER_SESSION_MAX_AGE", "48h")
+	t.Setenv("PHOTO_SERVER_ADMIN_PASSWORD", "swordfish")
 	t.Setenv("PHOTO_SERVER_VIPSTHUMBNAIL_BIN", "/usr/bin/vipsthumbnail")
 
 	c, err := Load()
@@ -91,6 +95,9 @@ func TestLoadExplicitOverrides(t *testing.T) {
 	}
 	if c.SessionMaxAge != 48*time.Hour {
 		t.Errorf("SessionMaxAge = %v, want 48h", c.SessionMaxAge)
+	}
+	if c.AdminPassword != "swordfish" {
+		t.Errorf("AdminPassword = %q", c.AdminPassword)
 	}
 	if c.VipsThumbnailBin != "/usr/bin/vipsthumbnail" {
 		t.Errorf("VipsThumbnailBin = %q", c.VipsThumbnailBin)
