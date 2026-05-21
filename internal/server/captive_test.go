@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -50,8 +51,8 @@ func TestCaptiveRedirectsForeignHost(t *testing.T) {
 		if rec.Code != http.StatusFound {
 			t.Errorf("host %q = %d, want 302", host, rec.Code)
 		}
-		if loc := rec.Header().Get("Location"); loc != "http://photos.wedding/" {
-			t.Errorf("host %q Location = %q, want BaseURL", host, loc)
+		if loc := rec.Header().Get("Location"); loc != "http://photos.wedding/welcome" {
+			t.Errorf("host %q Location = %q, want the /welcome landing", host, loc)
 		}
 	}
 }
@@ -72,6 +73,29 @@ func TestCaptivePassesThroughAllowedHosts(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Errorf("host %q = %d, want 200 (allowed)", host, rec.Code)
 		}
+	}
+}
+
+func TestWelcomeLandingServed(t *testing.T) {
+	s := captiveTestServer(t) // BaseURL=http://photos.wedding/, host allowed
+	req := httptest.NewRequest(http.MethodGet, "/welcome", nil)
+	req.Host = "photos.wedding" // allowed → passes the captive middleware
+	rec := httptest.NewRecorder()
+	s.httpSrv.Handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("/welcome = %d, want 200", rec.Code)
+	}
+	b := rec.Body.String()
+	if !strings.Contains(b, "You're connected") {
+		t.Error("welcome page missing the 'connected' message")
+	}
+	if !strings.Contains(b, "photos.wedding") {
+		t.Error("welcome page should name the host to open in a browser")
+	}
+	// It's a standalone landing — no bottom tab nav.
+	if strings.Contains(b, `class="tabbar"`) {
+		t.Error("welcome page should not render the guest bottom nav")
 	}
 }
 

@@ -17,7 +17,9 @@ import (
 // Android shows a banner that taps to open. No external dep.
 //
 // When allowed is empty (tests, dev) the middleware is a no-op.
-func captiveRedirect(allowed map[string]bool, baseURL string, next http.Handler) http.Handler {
+// target is the URL foreign-Host probes are sent to — the /welcome
+// landing, which (unlike the Polaroid page) has no dead camera shutter.
+func captiveRedirect(allowed map[string]bool, target string, next http.Handler) http.Handler {
 	if len(allowed) == 0 {
 		return next
 	}
@@ -30,7 +32,7 @@ func captiveRedirect(allowed map[string]bool, baseURL string, next http.Handler)
 			next.ServeHTTP(w, r)
 			return
 		}
-		http.Redirect(w, r, baseURL, http.StatusFound)
+		http.Redirect(w, r, target, http.StatusFound)
 	})
 }
 

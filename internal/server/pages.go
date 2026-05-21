@@ -5,6 +5,7 @@ import (
 	"embed"
 	"html/template"
 	"net/http"
+	"net/url"
 
 	"github.com/turbomerl/photo-server/internal/store"
 )
@@ -39,6 +40,8 @@ var (
 	tplUpload   = mustPage("upload.html")
 	tplGallery  = mustPage("gallery.html")
 	tplPhoto    = mustPage("photo.html")
+	// Standalone (no base layout / no bottom nav) — the captive landing.
+	tplWelcome = template.Must(template.ParseFS(templatesFS, "assets/templates/welcome.html"))
 )
 
 type pageData struct {
@@ -59,6 +62,23 @@ type pageData struct {
 	// (kgu.18, the no-JS fallback for the lightbox).
 	ViewHash string
 	ViewName string
+	// AppURL/AppHost are the configured public URL + bare host, shown
+	// in the Polaroid "open in your browser" nudge for guests stuck in
+	// the captive sign-in sheet (which can't use the camera).
+	AppURL  string
+	AppHost string
+}
+
+// appHost is the bare host (no scheme/path) of the configured BaseURL,
+// e.g. "photos.wedding" — for the captive nudge. Empty if unset.
+func (s *Server) appHost() string {
+	if s.baseURL == "" {
+		return ""
+	}
+	if u, err := url.Parse(s.baseURL); err == nil {
+		return u.Host
+	}
+	return ""
 }
 
 // galleryPageSize is the gallery page size (server first page + each
@@ -99,6 +119,25 @@ func (s *Server) ensureName(w http.ResponseWriter, r *http.Request) (id, name st
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	_, name := s.ensureName(w, r)
 	s.renderPage(w, tplPolaroid, pageData{Active: "polaroid", Name: name})
+}
+
+// handleWelcome is the captive-portal landing (kgu.6): the sign-in
+// sheet can't run the camera, so instead of dumping guests on a dead
+// Polaroid shutter we show a clean "you're connected — open the album
+// in your browser" page. Standalone (no bottom nav), works without JS.
+func (s *Server) handleWelcome(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	var buf bytes.Buffer
+	if err := tplWelcome.Execute(&buf, pageData{
+		AppURL:  s.baseURL,
+		AppHost: s.appHost(),
+	}); err != nil {
+		s.log.Error("welcome render", "err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	_, _ = w.Write(buf.Bytes())
 }
 
 // handleUploadPage serves the photostream-picker page (kgu.16). The

@@ -57,16 +57,19 @@ func TestPrintPageRendersQRsAndLabels(t *testing.T) {
 		t.Fatalf("status = %d", rec.Code)
 	}
 	b := rec.Body.String()
-	// Two distinct QR PNGs embedded as data URLs.
-	if c := strings.Count(b, "src=\"data:image/png;base64,"); c < 2 {
-		t.Errorf("expected at least 2 QR data URLs, got %d", c)
+	// One Wi-Fi QR per card (4 cards). No URL QR (single-QR by design).
+	if c := strings.Count(b, `src="data:image/png;base64,`); c != 4 {
+		t.Errorf("expected 4 QR data URLs (one per card), got %d", c)
+	}
+	if strings.Contains(b, "Open album") {
+		t.Error("the second URL QR should be gone (single-QR card)")
 	}
 	for _, want := range []string{
-		"photo-server",           // SSID label
-		"photos2026",             // PSK label
-		"http://photos.wedding/", // URL label
-		"window.print()",         // print button
-		"@page",                  // print CSS
+		"photo-server",   // SSID label
+		"photos2026",     // PSK label
+		"photos.wedding", // host to open in a browser
+		"window.print()", // print button
+		"@page",          // print CSS
 	} {
 		if !strings.Contains(b, want) {
 			t.Errorf("print body missing %q", want)

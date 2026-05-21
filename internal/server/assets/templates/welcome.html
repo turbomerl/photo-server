@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Connected · Wedding photos</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="welcome">
+<div class="welcome-card">
+  <div class="welcome-tick" aria-hidden="true">✅</div>
+  <h1>You're connected!</h1>
+  <p>Open the photo booth in your browser to take &amp; see photos:</p>
+  {{if .AppHost}}
+  <p><a class="cta" href="{{.AppURL}}">📸 Open {{.AppHost}}</a></p>
+  <p class="welcome-hint">If nothing happens when you tap, you're in the
+  Wi-Fi sign-in box (it can't use the camera). Open <strong>Safari</strong>
+  or <strong>Chrome</strong> and go to <strong>{{.AppHost}}</strong>.</p>
+  {{else}}
+  <p><a class="cta" href="/">📸 Open the photo booth</a></p>
+  {{end}}
+</div>
+</body>
+</html>

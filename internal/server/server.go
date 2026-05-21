@@ -9,6 +9,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/turbomerl/photo-server/internal/blobstore"
@@ -88,6 +89,7 @@ func New(addr string, d Deps) *Server {
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.HandleFunc("GET /upload", s.handleUploadPage)
 	mux.HandleFunc("GET /gallery", s.handleGalleryPage)
+	mux.HandleFunc("GET /welcome", s.handleWelcome) // captive landing (kgu.6)
 	mux.HandleFunc("GET /static/app.css", s.handleAppCSS)
 	mux.HandleFunc("GET /static/polaroid.js", s.handlePolaroidJS)
 	mux.HandleFunc("GET /static/upload.js", s.handleUploadJS)
@@ -111,10 +113,13 @@ func New(addr string, d Deps) *Server {
 	mux.HandleFunc("GET /admin/print", s.handlePrintPage)
 
 	// captiveRedirect wraps the mux: foreign Hosts (DNS-wildcarded
-	// captive probes from iOS/Android) get 302'd to BaseURL so the OS
-	// pops its "Sign in to network" sheet at our app (kgu.6). When
-	// AllowedHosts is empty (tests/dev) it's a no-op.
-	handler := captiveRedirect(s.allowedHosts, s.baseURL, s.logRequests(mux))
+	// captive probes from iOS/Android) get 302'd to the /welcome
+	// landing so the OS pops its "Sign in to network" sheet on a clean
+	// "open the album in your browser" page (kgu.6) — not the dead
+	// Polaroid shutter. When AllowedHosts is empty (tests/dev) it's a
+	// no-op.
+	captiveTarget := strings.TrimRight(s.baseURL, "/") + "/welcome"
+	handler := captiveRedirect(s.allowedHosts, captiveTarget, s.logRequests(mux))
 
 	s.httpSrv = &http.Server{
 		Addr:    addr,

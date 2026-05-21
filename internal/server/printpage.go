@@ -17,18 +17,18 @@ var printTplBytes []byte
 var tplPrint = template.Must(template.New("print").Parse(string(printTplBytes)))
 
 type printData struct {
-	SSID, PSK, BaseURL string
-	WIFIQR             template.URL // data: URL for the WIFI: QR
-	URLQR              template.URL // data: URL for the URL QR
-	Cards              []int        // repeat per A4 (2x2 = 4 cards)
+	SSID, PSK, BaseURL, Host string
+	WIFIQR                   template.URL // data: URL for the WIFI: QR
+	Cards                    []int        // repeat per A4 (2x2 = 4 cards)
 }
 
-// handlePrintPage renders an admin-gated, print-ready HTML page with
-// the WIFI-join QR + the URL QR + plain-text labels — the operator
-// prints from the browser ("Save as PDF" / "Print"). No PDF library
-// dependency. The OS QR camera auto-joins WPA2 from the WIFI: URI;
-// the URL QR opens the app (or just-tap if captive-portal triggered).
-// PRD F12: multiple per page for table cards.
+// handlePrintPage renders an admin-gated, print-ready HTML card with a
+// SINGLE Wi-Fi-join QR + plain-text instructions — the operator prints
+// from the browser ("Save as PDF"). One QR by owner request: a single
+// scan can only do one action, and joining the Wi-Fi is the step
+// guests can't do manually, so the QR is the WIFI: URI; the card then
+// tells them to open the URL in their browser (the captive sheet can't
+// run the camera). No PDF library. PRD F12: multiple per page.
 func (s *Server) handlePrintPage(w http.ResponseWriter, r *http.Request) {
 	if !s.requireAdmin(w, r) {
 		return
@@ -48,16 +48,10 @@ and <code>PHOTO_SERVER_BASE_URL</code> in the systemd unit and reload.</p>`)
 		http.Error(w, "qr error", http.StatusInternalServerError)
 		return
 	}
-	urlPNG, err := qrcode.Encode(s.baseURL, qrcode.Medium, 384)
-	if err != nil {
-		http.Error(w, "qr error", http.StatusInternalServerError)
-		return
-	}
 
 	p := printData{
-		SSID: s.ssid, PSK: s.wifiPSK, BaseURL: s.baseURL,
+		SSID: s.ssid, PSK: s.wifiPSK, BaseURL: s.baseURL, Host: s.appHost(),
 		WIFIQR: dataPNG(wifiPNG),
-		URLQR:  dataPNG(urlPNG),
 		Cards:  []int{0, 1, 2, 3},
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
