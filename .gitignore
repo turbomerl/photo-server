@@ -12,3 +12,10 @@
 # Local dev data dir (SQLite + photos). On the device this is the
 # systemd StateDirectory at /var/lib/photo-server, never in-repo.
 /data/
+
+# Editor swap/backup files (vim, emacs, …).
+*.swp
+*.swo
+*~
+.#*
+\#*\#
