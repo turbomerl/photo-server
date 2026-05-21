@@ -8,7 +8,7 @@
 
 [connection]
 id=photo-server-eno1
-uuid=8e7f9a1c-1c5b-4d3e-9c10-photoserver01
+uuid=0662af5e-3595-46d5-b6b3-0bb19e4aa8ea
 type=ethernet
 interface-name=eno1
 autoconnect=true
