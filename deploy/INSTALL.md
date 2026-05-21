@@ -14,6 +14,20 @@ Dell eno1 ─cat6─ [24V passive PoE injector] ─cat6─ UAP-AC-LR ((wifi)) �
    192.168.50.1/24            (no IP)              (AP-mode bridge)        DHCP .10–.200
 ```
 
+## 0. Build the binary (prereq)
+
+The install steps below all assume `./photo-server` exists in the
+repo root. Build it once up front — Go must be on `PATH` (it's at
+`/usr/local/go/bin` after kgu.5 / DEV_HANDOFF §5.1; `source ~/.bashrc`
+if a fresh shell can't find it).
+
+```bash
+cd /home/isambard-poulson/src/photo-server
+git pull --rebase
+make build         # → ./photo-server
+./photo-server --help 2>&1 | head -1 || ls -l photo-server
+```
+
 ## 1. AP-side (done first, in parallel with this)
 
 1. Plug the bundled **24V passive PoE injector** to mains, POE port to
@@ -49,10 +63,9 @@ sudo ss -tulnp | grep ':53\|:67'   # expect dnsmasq on 192.168.50.1
 
 ## 3. photo-server — install (one-time)
 
-```bash
-# Build (Go on PATH, see DEV_HANDOFF §5.1).
-make build
+Assumes `./photo-server` already exists from §0.
 
+```bash
 # Dedicated service user.
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin \
      photo-server || true
