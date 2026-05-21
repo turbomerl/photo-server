@@ -42,7 +42,10 @@ and <code>PHOTO_SERVER_BASE_URL</code> in the systemd unit and reload.</p>`)
 		return
 	}
 
-	wifi := "WIFI:T:WPA;S:" + wifiEscape(s.ssid) + ";P:" + wifiEscape(s.wifiPSK) + ";;"
+	// Canonical field order S;T;P (Apple's documented format); some
+	// Android camera parsers only recognise a wifi-join when the SSID
+	// comes first, otherwise they treat it as plain text.
+	wifi := "WIFI:S:" + wifiEscape(s.ssid) + ";T:WPA;P:" + wifiEscape(s.wifiPSK) + ";;"
 	wifiPNG, err := qrcode.Encode(wifi, qrcode.Medium, 384)
 	if err != nil {
 		http.Error(w, "qr error", http.StatusInternalServerError)
