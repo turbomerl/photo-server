@@ -28,14 +28,30 @@ make build         # → ./photo-server
 ./photo-server --help 2>&1 | head -1 || ls -l photo-server
 ```
 
-## 1. AP-side (done first, in parallel with this)
+## 1. AP-side: provision the UniFi AP
 
-1. Plug the bundled **24V passive PoE injector** to mains, POE port to
-   the AP's **MAIN**, LAN port to the Dell's `eno1`.
-2. From a phone, the WiFiman app → adopt the AP as **standalone**
-   (skip controller).
-3. Create one WPA2-Personal SSID — **same values as the env file
-   below**: `photo-server` / `photos2026`.
+The UAP-AC-LR is a **UniFi** AP: no standalone web UI, and **WiFiman
+cannot configure it**. You set its SSID once with the free **UniFi
+Network controller** software; afterwards the AP keeps broadcasting on
+its own and the controller can be stopped (it is NOT needed during the
+event).
+
+Wiring: bundled **24V passive PoE injector** → mains; injector **POE**
+port → AP **MAIN**; injector **LAN** port → Dell `eno1`.
+
+Pick a controller host:
+
+- **Laptop (Mac/Windows) — easiest.** Install "UniFi Network Server"
+  from <https://ui.com/download/unifi>, put the laptop + AP on the
+  same switch/LAN, open the controller, **adopt** the AP, create one
+  WPA2-Personal SSID, then move the AP's LAN cable back to the Dell.
+- **On the Dell.** Do §2 (gateway) FIRST so the AP gets a
+  `192.168.50.x` DHCP lease, then install the UniFi Network controller
+  on the Dell, browse `https://localhost:8443`, **adopt** the AP, set
+  the SSID.
+
+Either way, create exactly one WPA2-Personal SSID — **matching the env
+file in §3**: name `photo-server`, passphrase `photos2026`.
 
 ## 2. Network — install (one-time)
 
