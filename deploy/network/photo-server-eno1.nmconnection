@@ -1,0 +1,29 @@
+# photo-server LAN-side interface (kgu.5).
+#
+# Drop into /etc/NetworkManager/system-connections/ with mode 0600 and
+# owner root:root; NetworkManager picks it up on `nmcli connection
+# reload`. This pins eno1 to a static IP on the appliance subnet, with
+# no DNS / no default route — so the Dell still uses its other NIC
+# (wlp6s0) for dev internet, and clients on eno1 see only us.
+
+[connection]
+id=photo-server-eno1
+uuid=8e7f9a1c-1c5b-4d3e-9c10-photoserver01
+type=ethernet
+interface-name=eno1
+autoconnect=true
+autoconnect-priority=10
+
+[ethernet]
+
+[ipv4]
+method=manual
+address1=192.168.50.1/24
+ignore-auto-dns=true
+ignore-auto-routes=true
+never-default=true
+# dns= intentionally empty: clients DNS-resolve via dnsmasq on .1,
+# the Dell itself uses systemd-resolved on wlp6s0.
+
+[ipv6]
+method=disabled

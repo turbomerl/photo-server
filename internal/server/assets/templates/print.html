@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Print wifi/URL cards</title>
+<style>
+:root { --ink:#1c1c1e; --muted:#666; --line:#ccc; }
+* { box-sizing: border-box; }
+body { margin:0; padding:20px; color:var(--ink);
+  font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background:#eee; }
+.toolbar { max-width:794px; margin:0 auto 12px; }
+.toolbar button { font:inherit; padding:8px 14px; cursor:pointer; }
+.sheet {
+  width:794px;          /* A4 portrait at 96dpi */
+  min-height:1123px;
+  margin:0 auto; padding:20px;
+  background:#fff;
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap:12px;
+}
+.card {
+  border:1px dashed var(--line); padding:18px;
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+}
+.card h1 { font-size:22px; margin:0 0 4px; }
+.card .lead { color:var(--muted); margin-bottom:14px; font-size:13px; }
+.qrs { display:flex; gap:18px; width:100%; justify-content:space-around; }
+.qrbox { display:flex; flex-direction:column; align-items:center; }
+.qrbox img { width:170px; height:170px; image-rendering: pixelated; }
+.qrbox span { font-size:12px; color:var(--muted); margin-top:4px; }
+.creds { margin-top:16px; line-height:1.5; }
+.creds .row { display:flex; gap:8px; justify-content:center; }
+.creds .k { color:var(--muted); }
+.creds .v { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.url { margin-top:6px; word-break:break-all; }
+
+@media print {
+  @page { size: A4 portrait; margin: 0; }
+  body { background:#fff; padding:0; }
+  .toolbar { display:none; }
+  .sheet { margin:0; box-shadow:none; }
+  .card { border-style:dashed; }
+}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button onclick="window.print()">🖨️ Print this page</button>
+  <small style="color:#666">In your browser's print dialog, choose "Save as PDF" if you want a PDF. Use "Borderless" / margins 0.</small>
+</div>
+
+<div class="sheet">
+{{range .Cards}}
+  <div class="card">
+    <h1>📸 Wedding photos</h1>
+    <div class="lead">Scan the left QR to join the wifi. The right QR opens the album.</div>
+    <div class="qrs">
+      <div class="qrbox">
+        <img src="{{$.WIFIQR}}" alt="Wifi join QR">
+        <span>1. Join wifi</span>
+      </div>
+      <div class="qrbox">
+        <img src="{{$.URLQR}}" alt="URL QR">
+        <span>2. Open album</span>
+      </div>
+    </div>
+    <div class="creds">
+      <div class="row"><span class="k">network</span><span class="v">{{$.SSID}}</span></div>
+      <div class="row"><span class="k">password</span><span class="v">{{$.PSK}}</span></div>
+      <div class="url"><span class="k">url</span> <span class="v">{{$.BaseURL}}</span></div>
+    </div>
+  </div>
+{{end}}
+</div>
+</body>
+</html>

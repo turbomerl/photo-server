@@ -29,6 +29,15 @@ type Deps struct {
 	Sessions      *session.Manager
 	MaxBody       int64
 	AdminPassword string
+	// BaseURL is the redirect target for the captive trigger and the
+	// URL printed on the QR card.
+	BaseURL string
+	// AllowedHosts: requests whose Host isn't in this set get 302'd
+	// to BaseURL (in-server captive trigger, kgu.6). Empty disables.
+	AllowedHosts []string
+	// SSID + WiFiPSK feed the print page's WIFI: QR (kgu.21).
+	SSID    string
+	WiFiPSK string
 }
 
 // Server wraps the HTTP server and its dependencies.
@@ -42,6 +51,9 @@ type Server struct {
 	sessions      *session.Manager
 	maxBody       int64
 	adminPassword string
+	baseURL       string
+	allowedHosts  map[string]bool
+	ssid, wifiPSK string
 	httpSrv       *http.Server
 }
 
@@ -57,6 +69,10 @@ func New(addr string, d Deps) *Server {
 		sessions:      d.Sessions,
 		maxBody:       d.MaxBody,
 		adminPassword: d.AdminPassword,
+		baseURL:       d.BaseURL,
+		allowedHosts:  hostsSet(d.AllowedHosts),
+		ssid:          d.SSID,
+		wifiPSK:       d.WiFiPSK,
 	}
 
 	mux := http.NewServeMux()
@@ -92,10 +108,17 @@ func New(addr string, d Deps) *Server {
 	mux.HandleFunc("POST /admin/photos/{hash}/unhide", s.handleAdminUnhide)
 	mux.HandleFunc("POST /admin/photos/{hash}/delete", s.handleAdminDelete)
 	mux.HandleFunc("POST /admin/shutdown", s.handleAdminShutdown)
+	mux.HandleFunc("GET /admin/print", s.handlePrintPage)
+
+	// captiveRedirect wraps the mux: foreign Hosts (DNS-wildcarded
+	// captive probes from iOS/Android) get 302'd to BaseURL so the OS
+	// pops its "Sign in to network" sheet at our app (kgu.6). When
+	// AllowedHosts is empty (tests/dev) it's a no-op.
+	handler := captiveRedirect(s.allowedHosts, s.baseURL, s.logRequests(mux))
 
 	s.httpSrv = &http.Server{
 		Addr:    addr,
-		Handler: s.logRequests(mux),
+		Handler: handler,
 		// Bound slow-loris header reads; appliance is on a trusted LAN
 		// but a stuck phone shouldn't tie up a connection forever.
 		ReadHeaderTimeout: 10 * time.Second,

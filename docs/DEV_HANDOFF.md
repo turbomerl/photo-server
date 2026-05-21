@@ -169,6 +169,16 @@ are installed-but-masked on purpose; `kgu.5` owns unmasking and
 configuring them. Confirm `systemctl is-active NetworkManager` still
 reports `active` after this step.
 
+> **Architecture correction (2026-05-21, kgu.5/kgu.6 sprint).** The
+> Ubiquiti AP runs the wireless function itself, so **hostapd is NOT
+> used** — `kgu.5`'s issue title is misleading. And `opennds` is also
+> **not used**: `kgu.6` is a ~30-line in-server middleware that 302s
+> foreign `Host` requests to BASE_URL, which fires the OS captive
+> sheet via dnsmasq's DNS wildcard. Both packages stay installed but
+> masked (idempotent, harmless). The actual gateway install is
+> `deploy/INSTALL.md`; configs live in `deploy/dnsmasq/`,
+> `deploy/network/`, `deploy/photo-server.{service,env.example}`.
+
 ### 5.3 Beads (issue tracker)
 
 ```bash

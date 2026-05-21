@@ -110,6 +110,10 @@ func run() error {
 		Sessions:      session.NewManager(st, cfg.SessionMaxAge),
 		MaxBody:       cfg.MaxUploadBytes,
 		AdminPassword: cfg.AdminPassword,
+		BaseURL:       cfg.BaseURL,
+		AllowedHosts:  cfg.AllowedHosts,
+		SSID:          cfg.SSID,
+		WiFiPSK:       cfg.WiFiPSK,
 	})
 	return srv.Run(ctx, cfg.ShutdownTimeout)
 }

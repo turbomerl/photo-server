@@ -1,0 +1,116 @@
+# Bench bring-up — Dell + UAP-AC-LR + printable QR
+
+End-to-end prototype install. Run on the Dell.
+
+Architecture (corrected from kgu.5 issue text — recorded in
+DEV_HANDOFF §9): the Ubiquiti AP runs the wireless function itself,
+so **hostapd is NOT used**. The Dell is the wired L2-gateway —
+static IP on `eno1`, dnsmasq for DHCP+DNS, photo-server under
+systemd. The "captive-portal trigger" is built into photo-server
+(no `opennds`).
+
+```
+Dell eno1 ─cat6─ [24V passive PoE injector] ─cat6─ UAP-AC-LR ((wifi)) ─ guests
+   192.168.50.1/24            (no IP)              (AP-mode bridge)        DHCP .10–.200
+```
+
+## 1. AP-side (done first, in parallel with this)
+
+1. Plug the bundled **24V passive PoE injector** to mains, POE port to
+   the AP's **MAIN**, LAN port to the Dell's `eno1`.
+2. From a phone, the WiFiman app → adopt the AP as **standalone**
+   (skip controller).
+3. Create one WPA2-Personal SSID — **same values as the env file
+   below**: `photo-server` / `photos2026`.
+
+## 2. Network — install (one-time)
+
+```bash
+cd /home/isambard-poulson/src/photo-server
+
+# Unmask + install dnsmasq config (kgu.5 left it masked).
+sudo systemctl unmask dnsmasq
+sudo install -m 0644 -D deploy/dnsmasq/photo-server.conf \
+     /etc/dnsmasq.d/photo-server.conf
+
+# Pin eno1 to the static 192.168.50.1 via a NetworkManager keyfile.
+sudo install -m 0600 -o root -g root -D \
+     deploy/network/photo-server-eno1.nmconnection \
+     /etc/NetworkManager/system-connections/photo-server-eno1.nmconnection
+sudo nmcli connection reload
+sudo nmcli connection up photo-server-eno1   # may already be auto-up
+
+# Verify: eno1 has 192.168.50.1; dnsmasq binds only there; resolver
+# unchanged on wlp6s0.
+ip -br addr show eno1
+sudo systemctl enable --now dnsmasq
+sudo ss -tulnp | grep ':53\|:67'   # expect dnsmasq on 192.168.50.1
+```
+
+## 3. photo-server — install (one-time)
+
+```bash
+# Build (Go on PATH, see DEV_HANDOFF §5.1).
+make build
+
+# Dedicated service user.
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin \
+     photo-server || true
+
+# Binary + systemd unit + operator env file.
+sudo install -m 0755 photo-server /usr/local/bin/photo-server
+sudo install -m 0644 -D deploy/photo-server.service \
+     /etc/systemd/system/photo-server.service
+sudo install -m 0750 -d /etc/photo-server
+sudo install -m 0640 -o root -g photo-server \
+     deploy/photo-server.env.example \
+     /etc/photo-server/photo-server.env
+
+# *** EDIT NOW: at minimum set PHOTO_SERVER_ADMIN_PASSWORD. ***
+sudo "${EDITOR:-nano}" /etc/photo-server/photo-server.env
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now photo-server
+
+# Health.
+curl -fsS http://192.168.50.1/healthz
+journalctl -u photo-server -e -n 20
+```
+
+## 4. Bench-test the prototype
+
+1. Connect a phone to the SSID **photo-server** (`photos2026`).
+2. iOS should **auto-pop the "Sign in" sheet** at
+   `http://photos.wedding/`. If not, open
+   `http://192.168.50.1/` manually.
+3. Tap the **Polaroid** shutter → native camera → photo auto-uploads.
+4. Tap **Gallery** → the photo is there.
+5. Browse with another phone connected to the SSID → see each other's
+   uploads.
+
+## 5. Print the QR cards
+
+```
+http://192.168.50.1/admin/print
+```
+(or `http://photos.wedding/admin/print` from a guest device)
+
+Log in as `admin` / the `PHOTO_SERVER_ADMIN_PASSWORD` you set. Click
+**Print this page** → choose **Save as PDF** in the browser's print
+dialog → print the PDF on a colour printer. A4 portrait gives 4
+cards per page; cut to A6 for tables.
+
+## 6. Update / re-print
+
+Change env values → `sudo systemctl restart photo-server` → re-open
+`/admin/print` to regenerate the QR.
+
+## Troubleshooting
+
+| Symptom | Fix |
+| --- | --- |
+| `eno1` shows no IP | `nmcli connection up photo-server-eno1`; check the keyfile is 0600 |
+| dnsmasq fails on port 53 | `systemd-resolved` is on 127.0.0.53; the keyfile's `bind-interfaces`+`interface=eno1` already isolates dnsmasq to 192.168.50.1 |
+| Phone joins but no captive sheet | open `http://photos.wedding/` manually; check `PHOTO_SERVER_ALLOWED_HOSTS` matches the hostname; verify dnsmasq is wildcarding (`dig @192.168.50.1 captive.apple.com`) |
+| Admin gives 404 | `PHOTO_SERVER_ADMIN_PASSWORD` is empty (fail-closed); set + restart |
+| AP not discovered by WiFiman | factory reset (paperclip into AP reset hole ~10 s) |

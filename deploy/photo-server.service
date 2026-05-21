@@ -31,7 +31,16 @@ RestartSec=2s
 StateDirectory=photo-server
 StateDirectoryMode=0750
 WorkingDirectory=/var/lib/photo-server
+
+# Operator config (SSID/PSK/URL/admin password/etc) — see
+# deploy/photo-server.env.example. The leading `-` makes the file
+# optional so the service starts on an unprovisioned box too.
+EnvironmentFile=-/etc/photo-server/photo-server.env
+# Safe default if the env file doesn't set the addr.
 Environment=PHOTO_SERVER_ADDR=:8080
+# /etc/photo-server must be readable by the service user.
+ConfigurationDirectory=photo-server
+ConfigurationDirectoryMode=0750
 
 # Bind low ports (e.g. :80 for the captive-portal flow) without root.
 AmbientCapabilities=CAP_NET_BIND_SERVICE

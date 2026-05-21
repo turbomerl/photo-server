@@ -56,6 +56,19 @@ type Config struct {
 	// AdminPassword gates /admin (HTTP Basic). Empty disables the
 	// admin surface entirely (fail-closed if not configured — PRD F13).
 	AdminPassword string
+	// BaseURL is the public URL guests open after joining wifi
+	// (e.g., http://photos.wedding/). Used by the QR print page and
+	// the captive-portal redirect target.
+	BaseURL string
+	// AllowedHosts (lowercased, no port) is the set of HTTP Host
+	// values served as the app. Anything else gets 302'd to BaseURL
+	// (in-server captive trigger; kgu.6). Empty disables the captive
+	// middleware (tests, dev).
+	AllowedHosts []string
+	// SSID/WiFiPSK populate the WIFI: URI QR (kgu.21). Empty hides
+	// the print page (nothing useful to render).
+	SSID    string
+	WiFiPSK string
 }
 
 const envPrefix = "PHOTO_SERVER_"
@@ -79,6 +92,10 @@ func Load() (Config, error) {
 		VipsThumbnailBin: getenv("VIPSTHUMBNAIL_BIN", "vipsthumbnail"),
 		SessionMaxAge:    30 * 24 * time.Hour, // ~30 days
 		AdminPassword:    getenv("ADMIN_PASSWORD", ""),
+		BaseURL:          getenv("BASE_URL", "http://photos.wedding/"),
+		AllowedHosts:     splitList(getenv("ALLOWED_HOSTS", "")),
+		SSID:             getenv("SSID", ""),
+		WiFiPSK:          getenv("WIFI_PSK", ""),
 	}
 
 	if v := getenv("DATA_DIR", ""); v != "" {
@@ -154,6 +171,24 @@ func defaultDataDir() string {
 		return strings.Split(sd, ":")[0]
 	}
 	return "data"
+}
+
+// splitList parses a comma-separated env list, trimming whitespace and
+// lowercasing entries (so Host comparisons in the captive middleware
+// are case-insensitive).
+func splitList(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	out := parts[:0]
+	for _, p := range parts {
+		p = strings.ToLower(strings.TrimSpace(p))
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func getenv(key, def string) string {
