@@ -28,32 +28,59 @@ make build         # → ./photo-server
 ./photo-server --help 2>&1 | head -1 || ls -l photo-server
 ```
 
-## 1. AP-side: provision the UniFi AP
+## 1. AP-side: provision the UniFi AP (one-time)
 
 The UAP-AC-LR is a **UniFi** AP: no standalone web UI, and **WiFiman
-cannot configure it**. You set its SSID once with the free **UniFi
-Network controller** software; afterwards the AP keeps broadcasting on
-its own and the controller can be stopped (it is NOT needed during the
-event).
+cannot configure it** — you set its SSID once with the free **UniFi
+Network controller**. The macOS standalone app is discontinued, and
+the controller in Docker on a Mac/Windows laptop can't adopt devices
+(Docker Desktop has no host networking). The route that works:
+**run the controller in Docker on the Dell** (Linux host networking →
+adoption works; the bundled DB dodges the MongoDB-on-24.04 pain).
 
 Wiring: bundled **24V passive PoE injector** → mains; injector **POE**
-port → AP **MAIN**; injector **LAN** port → Dell `eno1`.
+port → AP **MAIN**. For *provisioning*, put the AP on the same LAN as
+the Dell (e.g. the injector **LAN** port into your home router/switch —
+the Dell reaches it over its other NIC). You move it to `eno1` at the
+start of §2.
 
-Pick a controller host:
+```bash
+# Controller (one self-contained container).
+sudo apt-get update && sudo apt-get install -y docker.io
+sudo systemctl enable --now docker
+sudo docker volume create unifi
+sudo docker run -d --name unifi --network host --restart unless-stopped \
+     -v unifi:/unifi jacobalberty/unifi:latest
+sudo docker logs -f unifi          # wait until it's listening, then Ctrl-C
+ss -tlnp | grep 8443
+```
 
-- **Laptop (Mac/Windows) — easiest.** Install "UniFi Network Server"
-  from <https://ui.com/download/unifi>, put the laptop + AP on the
-  same switch/LAN, open the controller, **adopt** the AP, create one
-  WPA2-Personal SSID, then move the AP's LAN cable back to the Dell.
-- **On the Dell.** Do §2 (gateway) FIRST so the AP gets a
-  `192.168.50.x` DHCP lease, then install the UniFi Network controller
-  on the Dell, browse `https://localhost:8443`, **adopt** the AP, set
-  the SSID.
+From any browser on the same LAN open `https://<dell-ip>:8443`
+(accept the self-signed cert) → wizard → **local admin** login (skip
+the Ubiquiti cloud account / remote access) → **Devices** → the AP
+shows **Pending Adoption** → **Adopt** (let any firmware update run) →
+**Settings → WiFi → Create New WiFi Network**:
 
-Either way, create exactly one WPA2-Personal SSID — **matching the env
-file in §3**: name `photo-server`, passphrase `photos2026`.
+- Name **`photo-server`**, Password **`photos2026`** (must match §3).
+- **Security: WPA2 (or WPA2/WPA3) — NOT WPA3-only.** Modern UniFi
+  hides the old "WPA2 Personal" label; entering a password = PSK, but
+  set the *Security Protocol* (under Advanced) to WPA2/WPA2-WPA3 so
+  older guest phones can join and the `WIFI:` QR (`T:WPA`) auto-joins.
+
+Confirm a phone sees the `photo-server` SSID, then:
+
+```bash
+sudo docker stop unifi   # AP keeps its config + keeps broadcasting;
+                         # controller is provisioning-only, not needed
+                         # at runtime. Reclaim space later:
+                         #   sudo docker rm unifi && sudo docker volume rm unifi
+```
 
 ## 2. Network — install (one-time)
+
+**First re-wire the AP to the Dell:** unplug the injector **LAN** cable
+from the home router and plug it into the Dell's **`eno1`**. (The AP
+keeps the SSID it was given in §1.)
 
 ```bash
 cd /home/isambard-poulson/src/photo-server
