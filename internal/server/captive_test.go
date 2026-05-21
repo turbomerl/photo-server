@@ -36,24 +36,49 @@ func captiveTestServer(t *testing.T) *Server {
 	})
 }
 
-func TestCaptiveRedirectsForeignHost(t *testing.T) {
+func probe(t *testing.T, s *Server, host, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	req.Host = host
+	rec := httptest.NewRecorder()
+	s.httpSrv.Handler.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestCaptiveProbesValidateCleanly(t *testing.T) {
 	s := captiveTestServer(t)
-	for _, host := range []string{
-		"captive.apple.com",
-		"connectivitycheck.gstatic.com",
-		"www.msftncsi.com",
-		"some-random.example",
-	} {
-		req := httptest.NewRequest(http.MethodGet, "/anything", nil)
-		req.Host = host
-		rec := httptest.NewRecorder()
-		s.httpSrv.Handler.ServeHTTP(rec, req)
-		if rec.Code != http.StatusFound {
-			t.Errorf("host %q = %d, want 302", host, rec.Code)
-		}
-		if loc := rec.Header().Get("Location"); loc != "http://photos.wedding/welcome" {
-			t.Errorf("host %q Location = %q, want the /welcome landing", host, loc)
-		}
+
+	// Android: …/generate_204 → 204 No Content (network validated).
+	if rec := probe(t, s, "connectivitycheck.gstatic.com", "/generate_204"); rec.Code != http.StatusNoContent {
+		t.Errorf("android probe = %d, want 204", rec.Code)
+	}
+	if rec := probe(t, s, "clients3.google.com", "/gen_204"); rec.Code != http.StatusNoContent {
+		t.Errorf("android gen_204 = %d, want 204", rec.Code)
+	}
+	// iOS: Apple "Success" page.
+	rec := probe(t, s, "captive.apple.com", "/hotspot-detect.html")
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Success") {
+		t.Errorf("apple probe = %d body=%q, want 200 Success", rec.Code, rec.Body.String())
+	}
+	// Windows.
+	if rec := probe(t, s, "www.msftncsi.com", "/ncsi.txt"); rec.Code != http.StatusOK ||
+		!strings.Contains(rec.Body.String(), "Microsoft NCSI") {
+		t.Errorf("ncsi probe = %d body=%q", rec.Code, rec.Body.String())
+	}
+	// None of these should be a redirect (no captive nag).
+	if rec := probe(t, s, "captive.apple.com", "/hotspot-detect.html"); rec.Code == http.StatusFound {
+		t.Error("probe must not 302 (would re-trigger the captive sheet)")
+	}
+}
+
+func TestCaptiveSoftLandsOtherForeignHosts(t *testing.T) {
+	s := captiveTestServer(t)
+	rec := probe(t, s, "some-random.example", "/")
+	if rec.Code != http.StatusFound {
+		t.Fatalf("foreign host = %d, want 302", rec.Code)
+	}
+	if loc := rec.Header().Get("Location"); loc != "http://photos.wedding/welcome" {
+		t.Errorf("Location = %q, want the /welcome landing", loc)
 	}
 }
 

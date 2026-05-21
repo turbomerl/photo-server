@@ -136,9 +136,12 @@ journalctl -u photo-server -e -n 20
 ## 4. Bench-test the prototype
 
 1. Connect a phone to the SSID **photo-server** (`photos2026`).
-2. iOS should **auto-pop the "Sign in" sheet** at
-   `http://photos.wedding/`. If not, open
-   `http://192.168.50.1/` manually.
+   It should join **cleanly** — no "Sign in to network" sheet, no
+   Android "use this network as is" nag (we answer the OS
+   connectivity probes so the offline network validates).
+2. Open **`http://photos.wedding/`** in Safari/Chrome (this is the
+   step to write on the printed card; the camera can't run inside a
+   captive sheet, so it must be the real browser).
 3. Tap the **Polaroid** shutter → native camera → photo auto-uploads.
 4. Tap **Gallery** → the photo is there.
 5. Browse with another phone connected to the SSID → see each other's
@@ -167,6 +170,7 @@ Change env values → `sudo systemctl restart photo-server` → re-open
 | --- | --- |
 | `eno1` shows no IP | `nmcli connection up photo-server-eno1`; check the keyfile is 0600 |
 | dnsmasq fails on port 53 | `systemd-resolved` is on 127.0.0.53; the keyfile's `bind-interfaces`+`interface=eno1` already isolates dnsmasq to 192.168.50.1 |
-| Phone joins but no captive sheet | open `http://photos.wedding/` manually; check `PHOTO_SERVER_ALLOWED_HOSTS` matches the hostname; verify dnsmasq is wildcarding (`dig @192.168.50.1 captive.apple.com`) |
+| Android still nags "use this network as is" | the binary must answer the OS probes — confirm you redeployed; test `curl -H 'Host: connectivitycheck.gstatic.com' http://192.168.50.1/generate_204 -o /dev/null -w '%{http_code}'` → must be `204` |
+| `photos.wedding` won't open | check `PHOTO_SERVER_ALLOWED_HOSTS`/`BASE_URL` match the hostname; verify dnsmasq wildcards (`dig @192.168.50.1 photos.wedding` → 192.168.50.1) |
 | Admin gives 404 | `PHOTO_SERVER_ADMIN_PASSWORD` is empty (fail-closed); set + restart |
 | AP not discovered by WiFiman | factory reset (paperclip into AP reset hole ~10 s) |
