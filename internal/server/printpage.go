@@ -27,8 +27,8 @@ type printData struct {
 // from the browser ("Save as PDF"). One QR by owner request: a single
 // scan can only do one action, and joining the Wi-Fi is the step
 // guests can't do manually, so the QR is the WIFI: URI; the card then
-// tells them to open the URL in their browser (the captive sheet can't
-// run the camera). No PDF library. PRD F12: multiple per page.
+// tells them to open the URL in their browser. No PDF library.
+// PRD F12: multiple per page.
 func (s *Server) handlePrintPage(w http.ResponseWriter, r *http.Request) {
 	if !s.requireAdmin(w, r) {
 		return

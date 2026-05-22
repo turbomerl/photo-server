@@ -9,7 +9,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/turbomerl/photo-server/internal/blobstore"
@@ -30,12 +29,9 @@ type Deps struct {
 	Sessions      *session.Manager
 	MaxBody       int64
 	AdminPassword string
-	// BaseURL is the redirect target for the captive trigger and the
-	// URL printed on the QR card.
+	// BaseURL is the app URL printed on the QR card (e.g.
+	// http://photos.wedding/).
 	BaseURL string
-	// AllowedHosts: requests whose Host isn't in this set get 302'd
-	// to BaseURL (in-server captive trigger, kgu.6). Empty disables.
-	AllowedHosts []string
 	// SSID + WiFiPSK feed the print page's WIFI: QR (kgu.21).
 	SSID    string
 	WiFiPSK string
@@ -53,7 +49,6 @@ type Server struct {
 	maxBody       int64
 	adminPassword string
 	baseURL       string
-	allowedHosts  map[string]bool
 	ssid, wifiPSK string
 	httpSrv       *http.Server
 }
@@ -71,7 +66,6 @@ func New(addr string, d Deps) *Server {
 		maxBody:       d.MaxBody,
 		adminPassword: d.AdminPassword,
 		baseURL:       d.BaseURL,
-		allowedHosts:  hostsSet(d.AllowedHosts),
 		ssid:          d.SSID,
 		wifiPSK:       d.WiFiPSK,
 	}
@@ -89,7 +83,6 @@ func New(addr string, d Deps) *Server {
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.HandleFunc("GET /upload", s.handleUploadPage)
 	mux.HandleFunc("GET /gallery", s.handleGalleryPage)
-	mux.HandleFunc("GET /welcome", s.handleWelcome) // captive landing (kgu.6)
 	mux.HandleFunc("GET /static/app.css", s.handleAppCSS)
 	mux.HandleFunc("GET /static/polaroid.js", s.handlePolaroidJS)
 	mux.HandleFunc("GET /static/upload.js", s.handleUploadJS)
@@ -112,18 +105,13 @@ func New(addr string, d Deps) *Server {
 	mux.HandleFunc("POST /admin/shutdown", s.handleAdminShutdown)
 	mux.HandleFunc("GET /admin/print", s.handlePrintPage)
 
-	// captiveRedirect wraps the mux: foreign Hosts (DNS-wildcarded
-	// captive probes from iOS/Android) get 302'd to the /welcome
-	// landing so the OS pops its "Sign in to network" sheet on a clean
-	// "open the album in your browser" page (kgu.6) — not the dead
-	// Polaroid shutter. When AllowedHosts is empty (tests/dev) it's a
-	// no-op.
-	captiveTarget := strings.TrimRight(s.baseURL, "/") + "/welcome"
-	handler := captiveRedirect(s.allowedHosts, captiveTarget, s.logRequests(mux))
-
+	// No captive portal (kgu.6, final): dnsmasq resolves only
+	// photos.wedding, so phones see plain "no internet" and Android
+	// offers the obvious "Stay connected?" approval. Nothing to
+	// intercept here — just the access log.
 	s.httpSrv = &http.Server{
 		Addr:    addr,
-		Handler: handler,
+		Handler: s.logRequests(mux),
 		// Bound slow-loris header reads; appliance is on a trusted LAN
 		// but a stuck phone shouldn't tie up a connection forever.
 		ReadHeaderTimeout: 10 * time.Second,

@@ -111,7 +111,6 @@ func run() error {
 		MaxBody:       cfg.MaxUploadBytes,
 		AdminPassword: cfg.AdminPassword,
 		BaseURL:       cfg.BaseURL,
-		AllowedHosts:  cfg.AllowedHosts,
 		SSID:          cfg.SSID,
 		WiFiPSK:       cfg.WiFiPSK,
 	})

@@ -177,7 +177,7 @@ Change env values → `sudo systemctl restart photo-server` → re-open
 | --- | --- |
 | `eno1` shows no IP | `nmcli connection up photo-server-eno1`; check the keyfile is 0600 |
 | dnsmasq fails on port 53 | `systemd-resolved` is on 127.0.0.53; the keyfile's `bind-interfaces`+`interface=eno1` already isolates dnsmasq to 192.168.50.1 |
-| Android shows a captive sign-in webview (option hidden in ⋮) instead of the plain "Stay connected? Yes" dialog | dnsmasq is still resolving probe hosts — confirm the wildcard line is gone (`dig @192.168.50.1 connectivitycheck.gstatic.com` must NOT return an answer) and `PHOTO_SERVER_ALLOWED_HOSTS` is empty |
-| `photos.wedding` won't open | check `PHOTO_SERVER_ALLOWED_HOSTS`/`BASE_URL` match the hostname; verify dnsmasq wildcards (`dig @192.168.50.1 photos.wedding` → 192.168.50.1) |
+| Android shows a captive sign-in webview (option hidden in ⋮) instead of the plain "Stay connected? Yes" dialog | dnsmasq is still resolving probe hosts — confirm the wildcard line is gone (`dig @192.168.50.1 connectivitycheck.gstatic.com` must NOT return an answer; only `photos.wedding` should resolve) |
+| `photos.wedding` won't open | check `PHOTO_SERVER_BASE_URL` matches the hostname; verify dnsmasq resolves it (`dig @192.168.50.1 photos.wedding` → 192.168.50.1) |
 | Admin gives 404 | `PHOTO_SERVER_ADMIN_PASSWORD` is empty (fail-closed); set + restart |
 | AP not discovered by WiFiman | factory reset (paperclip into AP reset hole ~10 s) |

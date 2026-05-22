@@ -109,8 +109,7 @@ func (m *Manager) SetDisplayName(token, name string) error {
 //     JS-visible copy, refreshed via /session).
 //   - Secure=false: the appliance serves plain HTTP on the LAN
 //     (PRD F4 / §9.7); a Secure cookie would be silently dropped.
-//   - SameSite=Lax: same-origin app; safe default behind the captive
-//     portal.
+//   - SameSite=Lax: same-origin app; safe default.
 func (m *Manager) setCookie(w http.ResponseWriter, token string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     CookieName,

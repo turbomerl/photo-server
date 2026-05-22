@@ -89,28 +89,6 @@ body {
 
 .noscript { margin-top: 22px; color: var(--muted); }
 
-/* ---- captive landing (/welcome) ---- */
-body.welcome {
-  display: flex; align-items: center; justify-content: center;
-  min-height: 100vh; padding: 24px;
-}
-.welcome-card {
-  max-width: 24rem; text-align: center;
-  background: var(--card); border: 1px solid var(--line);
-  border-radius: 16px; padding: 28px 22px;
-  box-shadow: 0 6px 24px rgba(0,0,0,.08);
-}
-.welcome-tick { font-size: 44px; line-height: 1; }
-.welcome-card h1 { font-size: 1.4rem; margin: 10px 0 6px; }
-.welcome-card p { color: var(--muted); margin: 8px 0; }
-.cta {
-  display: inline-block; margin: 8px 0; padding: 13px 20px;
-  background: var(--accent); color: #fff; font-weight: 600;
-  border-radius: 12px; text-decoration: none;
-}
-.welcome-hint { font-size: 13px; }
-.welcome-hint strong { color: var(--fg); }
-
 .strip {
   list-style: none;
   display: flex;

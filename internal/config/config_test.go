@@ -51,9 +51,8 @@ func TestLoadDefaults(t *testing.T) {
 	if c.BaseURL != "http://photos.wedding/" {
 		t.Errorf("BaseURL default = %q", c.BaseURL)
 	}
-	if len(c.AllowedHosts) != 0 || c.SSID != "" || c.WiFiPSK != "" {
-		t.Errorf("captive/QR defaults should be empty: hosts=%v ssid=%q psk=%q",
-			c.AllowedHosts, c.SSID, c.WiFiPSK)
+	if c.SSID != "" || c.WiFiPSK != "" {
+		t.Errorf("QR defaults should be empty: ssid=%q psk=%q", c.SSID, c.WiFiPSK)
 	}
 	if c.VipsThumbnailBin != "vipsthumbnail" {
 		t.Errorf("VipsThumbnailBin = %q, want vipsthumbnail", c.VipsThumbnailBin)
@@ -85,7 +84,6 @@ func TestLoadExplicitOverrides(t *testing.T) {
 	t.Setenv("PHOTO_SERVER_SESSION_MAX_AGE", "48h")
 	t.Setenv("PHOTO_SERVER_ADMIN_PASSWORD", "swordfish")
 	t.Setenv("PHOTO_SERVER_BASE_URL", "http://example.lan/")
-	t.Setenv("PHOTO_SERVER_ALLOWED_HOSTS", "example.lan, 10.0.0.1, LOCALHOST")
 	t.Setenv("PHOTO_SERVER_SSID", "WeddingPhotos")
 	t.Setenv("PHOTO_SERVER_WIFI_PSK", "ourwedding2026")
 	t.Setenv("PHOTO_SERVER_VIPSTHUMBNAIL_BIN", "/usr/bin/vipsthumbnail")
@@ -112,13 +110,6 @@ func TestLoadExplicitOverrides(t *testing.T) {
 	}
 	if c.BaseURL != "http://example.lan/" {
 		t.Errorf("BaseURL = %q", c.BaseURL)
-	}
-	wantHosts := []string{"example.lan", "10.0.0.1", "localhost"}
-	if len(c.AllowedHosts) != 3 ||
-		c.AllowedHosts[0] != wantHosts[0] ||
-		c.AllowedHosts[1] != wantHosts[1] ||
-		c.AllowedHosts[2] != wantHosts[2] {
-		t.Errorf("AllowedHosts = %v, want %v (trimmed+lowercased)", c.AllowedHosts, wantHosts)
 	}
 	if c.SSID != "WeddingPhotos" || c.WiFiPSK != "ourwedding2026" {
 		t.Errorf("SSID/PSK = %q/%q", c.SSID, c.WiFiPSK)
