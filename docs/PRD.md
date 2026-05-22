@@ -243,27 +243,30 @@ hardware and stack:
 1. ~~Compute~~ — **decided:** repurpose the existing Dell mini-PC running Ubuntu as the server. Owner's laptop is the fallback if the Dell turns out to be unsuitable after the rehearsal. No hardware to buy.
 2. **AP hardware**: single PoE AP in the marquee. Wired backhaul from the server in the house alongside the marquee mains feed, into a PoE switch (or PoE injector) → AP. Leaning **Ubiquiti U6-Lite** for the PoE + decent client capacity at this price point; alternatives welcome.
 3. **Storage**: internal NVMe vs. external USB SSD. Either is fine at 75 GB; preference is whatever makes "hand the couple the photos afterwards" simplest.
-4. ~~OS / stack~~ — **decided:** Ubuntu (already on the Dell) + a single **Go binary under `systemd`**. SQLite for metadata. `libvips` (with HEIC support) for thumbnailing and HEIC → JPEG conversion. `dnsmasq` for DHCP/DNS (bound only to the AP-facing NIC). Connectivity
-handling is **built into the photo-server binary** as a ~30-line
-middleware (kgu.6): dnsmasq wildcards all DNS to the appliance, so the
-OS connectivity probes (Apple/Android/Windows) land on the server;
-the middleware answers them with the OS-expected "you have internet"
-response, so phones **validate the offline network and join cleanly**
-— no captive sign-in sheet, no Android "use this network as is" nag
-(decided 2026-05-22: the auto-pop sheet can't run the camera anyway,
-so a clean join + the printed "open photos.wedding" instruction is
-smoother). Other foreign hosts get a soft 302 to `/welcome`. No
-`nodogsplash`/`opennds`/`hostapd` process (the Ubiquiti AP runs the
-wireless itself). One process, one config file, one binary to copy.
+4. ~~OS / stack~~ — **decided:** Ubuntu (already on the Dell) + a single **Go binary under `systemd`**. SQLite for metadata. `libvips` (with HEIC support) for thumbnailing and HEIC → JPEG conversion. `dnsmasq` for DHCP/DNS (bound only to the AP-facing NIC). **No captive
+portal** (kgu.6, final): dnsmasq resolves *only* `photos.wedding` and
+leaves everything else (incl. the OS connectivity probes) unresolved,
+so phones classify the Wi-Fi as plain **"no internet"** rather than a
+captive portal. On Android that yields the obvious "Stay connected?
+Yes" dialog (one tap, remembered per SSID) instead of burying "use
+this network as is" in a captive-webview ⋮ menu; iOS just uses the
+Wi-Fi for the LAN. Guests then open the printed `photos.wedding` URL.
+Rationale (device-tested 2026-05-22): a captive portal can't run the
+camera anyway, and on Android+cellular an internet-less Wi-Fi is
+ignored unless the user approves it — so the cleanest path is the
+plain no-internet dialog, not a fake-internet (204) trick (which
+removed the very approval prompt) and not a captive sheet (which
+hid it). No `nodogsplash`/`opennds`/`hostapd`. One binary to copy.
 5. **Persistent session mechanism**: long-lived `localStorage` token + cookie issued on first visit. Confirm it survives iOS Safari "Private Relay" weirdness and Android Chrome backgrounding.
-6. **Captive-portal handling**: **in-server middleware** (kgu.6 —
-   decided 2026-05-22, supersedes both opennds and the earlier
-   "trigger the sheet" approach): the middleware answers the OS
-   connectivity probes with success so phones join the offline
-   network cleanly (no sign-in sheet, no Android "use as is" nag);
-   guests reach the app via the printed `photos.wedding` URL. Accept
-   that some guests will
-   manually open the URL.
+6. **Captive-portal handling**: **none** (kgu.6 — final, device-tested
+   2026-05-22). dnsmasq resolves only `photos.wedding`; the OS
+   connectivity probes go unresolved → phones see plain "no internet",
+   not a captive portal. Android shows the obvious "Stay connected?
+   Yes" approval (required for it to use an internet-less Wi-Fi when
+   cellular is present); iOS uses the LAN directly. Guests open the
+   printed `photos.wedding` URL themselves. (Superseded the opennds
+   substitution, the 302-sign-in-sheet trigger, and the 204
+   fake-internet approach — see git log.)
 7. **Hostname / TLS**: HTTP behind the captive portal at a friendly mDNS name. Self-signed HTTPS adds a scary browser warning to the QR-and-go flow — skip unless we *need* it.
 8. **Backup**: USB stick left plugged in for periodic rsync; the couple keeps the SSD afterwards anyway. Skip RAID.
 9. **Distribution**: not applicable — single device, hand-built. We just need a clean install procedure that we can re-run if the SSD dies the week before.

@@ -6,8 +6,10 @@ Architecture (corrected from kgu.5 issue text — recorded in
 DEV_HANDOFF §9): the Ubiquiti AP runs the wireless function itself,
 so **hostapd is NOT used**. The Dell is the wired L2-gateway —
 static IP on `eno1`, dnsmasq for DHCP+DNS, photo-server under
-systemd. The "captive-portal trigger" is built into photo-server
-(no `opennds`).
+systemd. **No captive portal** — dnsmasq resolves only
+`photos.wedding`, so phones see plain "no internet" (clean Android
+"Stay connected?" approval) and guests open `photos.wedding`
+themselves (no `opennds`, no in-server captive trick).
 
 ```
 Dell eno1 ─cat6─ [24V passive PoE injector] ─cat6─ UAP-AC-LR ((wifi)) ─ guests
@@ -136,12 +138,17 @@ journalctl -u photo-server -e -n 20
 ## 4. Bench-test the prototype
 
 1. Connect a phone to the SSID **photo-server** (`photos2026`).
-   It should join **cleanly** — no "Sign in to network" sheet, no
-   Android "use this network as is" nag (we answer the OS
-   connectivity probes so the offline network validates).
-2. Open **`http://photos.wedding/`** in Safari/Chrome (this is the
-   step to write on the printed card; the camera can't run inside a
-   captive sheet, so it must be the real browser).
+   - **Android (with cellular):** it flags "no internet" and you tap
+     **"Stay connected? Yes"** / "use this network as is" once
+     (Android remembers it per phone). This is unavoidable — Android
+     ignores an internet-less Wi-Fi over mobile data unless the user
+     approves it. We resolve only `photos.wedding` (no captive
+     portal), so the approval is the **obvious dialog**, not buried in
+     a captive webview's ⋮ menu. At the venue (weak/no cellular) most
+     phones won't even prompt.
+   - **iPhone:** just uses the Wi-Fi for the LAN.
+2. Open **`http://photos.wedding/`** in Safari/Chrome (the step to put
+   on the printed card).
 3. Tap the **Polaroid** shutter → native camera → photo auto-uploads.
 4. Tap **Gallery** → the photo is there.
 5. Browse with another phone connected to the SSID → see each other's
@@ -170,7 +177,7 @@ Change env values → `sudo systemctl restart photo-server` → re-open
 | --- | --- |
 | `eno1` shows no IP | `nmcli connection up photo-server-eno1`; check the keyfile is 0600 |
 | dnsmasq fails on port 53 | `systemd-resolved` is on 127.0.0.53; the keyfile's `bind-interfaces`+`interface=eno1` already isolates dnsmasq to 192.168.50.1 |
-| Android still nags "use this network as is" | the binary must answer the OS probes — confirm you redeployed; test `curl -H 'Host: connectivitycheck.gstatic.com' http://192.168.50.1/generate_204 -o /dev/null -w '%{http_code}'` → must be `204` |
+| Android shows a captive sign-in webview (option hidden in ⋮) instead of the plain "Stay connected? Yes" dialog | dnsmasq is still resolving probe hosts — confirm the wildcard line is gone (`dig @192.168.50.1 connectivitycheck.gstatic.com` must NOT return an answer) and `PHOTO_SERVER_ALLOWED_HOSTS` is empty |
 | `photos.wedding` won't open | check `PHOTO_SERVER_ALLOWED_HOSTS`/`BASE_URL` match the hostname; verify dnsmasq wildcards (`dig @192.168.50.1 photos.wedding` → 192.168.50.1) |
 | Admin gives 404 | `PHOTO_SERVER_ADMIN_PASSWORD` is empty (fail-closed); set + restart |
 | AP not discovered by WiFiman | factory reset (paperclip into AP reset hole ~10 s) |
