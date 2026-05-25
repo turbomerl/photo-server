@@ -22,11 +22,11 @@ func TestOpenAppliesMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SchemaVersion: %v", err)
 	}
-	if v != 1 {
-		t.Fatalf("schema version = %d, want 1", v)
+	if v != 2 {
+		t.Fatalf("schema version = %d, want 2", v)
 	}
 
-	for _, table := range []string{"sessions", "photos"} {
+	for _, table := range []string{"sessions", "photos", "hearts"} {
 		var name string
 		err := s.DB().QueryRow(
 			`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, table,
@@ -59,8 +59,8 @@ func TestMigrateIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SchemaVersion: %v", err)
 	}
-	if v != 1 {
-		t.Fatalf("schema version after re-open = %d, want 1", v)
+	if v != 2 {
+		t.Fatalf("schema version after re-open = %d, want 2", v)
 	}
 }
 

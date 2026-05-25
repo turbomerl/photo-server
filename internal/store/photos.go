@@ -96,9 +96,19 @@ type PhotoListItem struct {
 	MIME        string `json:"mime"`
 	DisplayName string `json:"display_name"`
 	UploadedAt  int64  `json:"uploaded_at"` // unix seconds (UTC)
+	HeartCount  int64  `json:"heart_count"`
+	Hearted     bool   `json:"hearted"` // whether the requesting session hearts it
 }
 
-const scanCols = `id, content_hash, mime, display_name, uploaded_at`
+// photoSelect is the shared gallery/my-uploads/leaderboard projection.
+// The LEFT JOIN flags whether the viewer's session (the FIRST bind
+// param) has hearted each row; "" matches no session row, so an
+// anonymous viewer gets hearted=false everywhere.
+const photoSelect = `
+	SELECT p.id, p.content_hash, p.mime, p.display_name, p.uploaded_at,
+	       p.heart_count, (h.session_id IS NOT NULL)
+	FROM photos p
+	LEFT JOIN hearts h ON h.photo_id = p.id AND h.session_id = ?`
 
 func scanPhotoList(rows interface {
 	Next() bool
@@ -108,9 +118,12 @@ func scanPhotoList(rows interface {
 	var out []PhotoListItem
 	for rows.Next() {
 		var p PhotoListItem
-		if err := rows.Scan(&p.ID, &p.Hash, &p.MIME, &p.DisplayName, &p.UploadedAt); err != nil {
+		var hearted int // SQLite returns the boolean expr as 0/1
+		if err := rows.Scan(&p.ID, &p.Hash, &p.MIME, &p.DisplayName,
+			&p.UploadedAt, &p.HeartCount, &hearted); err != nil {
 			return nil, err
 		}
+		p.Hearted = hearted != 0
 		out = append(out, p)
 	}
 	return out, rows.Err()
@@ -119,10 +132,11 @@ func scanPhotoList(rows interface {
 // SessionPhotos returns a session's own visible uploads, newest first
 // (kgu.16 "your recent uploads"). limit is capped by the caller.
 func (s *Store) SessionPhotos(sessionID string, limit int) ([]PhotoListItem, error) {
-	rows, err := s.db.Query(
-		`SELECT `+scanCols+` FROM photos
-		 WHERE uploader_session_id = ? AND hidden_at IS NULL
-		 ORDER BY id DESC LIMIT ?`, sessionID, limit)
+	// Viewer == uploader here, so the same session id binds the heart
+	// join and the ownership filter.
+	rows, err := s.db.Query(photoSelect+`
+		 WHERE p.uploader_session_id = ? AND p.hidden_at IS NULL
+		 ORDER BY p.id DESC LIMIT ?`, sessionID, sessionID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -134,14 +148,14 @@ func (s *Store) SessionPhotos(sessionID string, limit int) ([]PhotoListItem, err
 // grid (kgu.17). Keyset pagination: pass beforeID=0 for the first
 // page, then the smallest id from the previous page. Uses the
 // idx_photos_visible_recent partial index.
-func (s *Store) GalleryPhotos(beforeID int64, limit int) ([]PhotoListItem, error) {
-	q := `SELECT ` + scanCols + ` FROM photos WHERE hidden_at IS NULL`
-	args := []any{}
+func (s *Store) GalleryPhotos(viewerSessionID string, beforeID int64, limit int) ([]PhotoListItem, error) {
+	q := photoSelect + ` WHERE p.hidden_at IS NULL`
+	args := []any{viewerSessionID}
 	if beforeID > 0 {
-		q += ` AND id < ?`
+		q += ` AND p.id < ?`
 		args = append(args, beforeID)
 	}
-	q += ` ORDER BY id DESC LIMIT ?`
+	q += ` ORDER BY p.id DESC LIMIT ?`
 	args = append(args, limit)
 
 	rows, err := s.db.Query(q, args...)

@@ -11,7 +11,7 @@
   if (!grid) return;
 
   // Build the overlay once, lazily.
-  var ov, ovImg, ovName, ovDl, idx = -1;
+  var ov, ovImg, ovName, ovDl, ovHeart, idx = -1;
 
   function tiles() {
     return grid.querySelectorAll("a[href^='/p/']");
@@ -31,10 +31,14 @@
       '<img class="lb-img" alt="">' +
       '<button class="lb-nav lb-next" aria-label="Next">›</button>' +
       '<div class="lb-bar"><span class="lb-name"></span>' +
+      '<form class="heart lb-heart" method="post" data-hash="">' +
+      '<button type="submit" aria-label="Love this photo">' +
+      '<span class="hi">♥</span> <span class="hc"></span></button></form>' +
       '<a class="lb-dl" download>⤓ Download original</a></div>';
     ovImg = ov.querySelector(".lb-img");
     ovName = ov.querySelector(".lb-name");
     ovDl = ov.querySelector(".lb-dl");
+    ovHeart = ov.querySelector(".lb-heart");
     document.body.appendChild(ov);
 
     ov.querySelector(".lb-x").onclick = close;
@@ -65,6 +69,15 @@
     var nm = a.getAttribute("data-name") || "";
     ovName.textContent = nm ? "Shared by " + nm : "Shared anonymously";
     ovDl.href = "/original/" + h;
+    // Mirror this photo's heart state from its grid tile; heart.js keeps
+    // both copies in sync when either is toggled.
+    var gf = grid.querySelector('form.heart[data-hash="' + h + '"]');
+    ovHeart.setAttribute("data-hash", h);
+    ovHeart.setAttribute("action", "/photo/" + h + "/heart");
+    var on = !!(gf && gf.classList.contains("on"));
+    ovHeart.classList.toggle("on", on);
+    ovHeart.querySelector("button").setAttribute("aria-pressed", on ? "true" : "false");
+    ovHeart.querySelector(".hc").textContent = gf ? gf.querySelector(".hc").textContent : "0";
     ov.querySelector(".lb-prev").style.visibility = i > 0 ? "" : "hidden";
     ov.querySelector(".lb-next").style.visibility =
       i < list.length - 1 ? "" : "hidden";

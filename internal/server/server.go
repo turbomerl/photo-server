@@ -91,6 +91,7 @@ func New(addr string, d Deps) *Server {
 	mux.HandleFunc("GET /static/upload.js", s.handleUploadJS)
 	mux.HandleFunc("GET /static/gallery.js", s.handleGalleryJS)
 	mux.HandleFunc("GET /static/viewer.js", s.handleViewerJS)
+	mux.HandleFunc("GET /static/heart.js", s.handleHeartJS)
 	mux.HandleFunc("GET /api/uploads/mine", s.handleMyUploads)
 	mux.HandleFunc("GET /api/photos", s.handlePhotos)
 
@@ -98,6 +99,9 @@ func New(addr string, d Deps) *Server {
 	mux.HandleFunc("GET /p/{hash}", s.handlePhotoPage)
 	mux.HandleFunc("GET /photo/{hash}", s.handlePhotoView)
 	mux.HandleFunc("GET /original/{hash}", s.handleOriginalDownload)
+
+	// Anonymous hearts (kgu.23): toggle the guest's heart on a photo.
+	mux.HandleFunc("POST /photo/{hash}/heart", s.handleHeart)
 
 	// Admin (kgu.19) — gated by HTTP Basic against AdminPassword; if
 	// the password is empty every admin route 404s (fail-closed).

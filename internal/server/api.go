@@ -14,6 +14,8 @@ type photoTile struct {
 	ThumbURL    string `json:"thumb_url"`
 	DisplayName string `json:"display_name,omitempty"`
 	UploadedAt  int64  `json:"uploaded_at"`
+	HeartCount  int64  `json:"heart_count"`
+	Hearted     bool   `json:"hearted"`
 }
 
 func toTiles(items []store.PhotoListItem) []photoTile {
@@ -24,6 +26,8 @@ func toTiles(items []store.PhotoListItem) []photoTile {
 			ThumbURL:    "/thumb/" + p.Hash,
 			DisplayName: p.DisplayName,
 			UploadedAt:  p.UploadedAt,
+			HeartCount:  p.HeartCount,
+			Hearted:     p.Hearted,
 		})
 	}
 	return tiles
@@ -59,7 +63,15 @@ func (s *Server) handlePhotos(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	limit := clampLimit(r.URL.Query().Get("limit"), galleryPageSize, 100)
-	items, err := s.st.GalleryPhotos(before, limit)
+	// Resolve the viewer's session so each tile knows if they've hearted
+	// it (sets the cookie on first contact, like the page handlers).
+	viewer := ""
+	if s.sessions != nil {
+		if sess, err := s.sessions.Ensure(w, r); err == nil {
+			viewer = sess.ID
+		}
+	}
+	items, err := s.st.GalleryPhotos(viewer, before, limit)
 	if err != nil {
 		s.log.Error("gallery feed query", "err", err)
 		http.Error(w, "db error", http.StatusInternalServerError)
