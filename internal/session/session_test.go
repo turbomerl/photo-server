@@ -10,14 +10,14 @@ import (
 	"github.com/turbomerl/photo-server/internal/store"
 )
 
-func newManager(t *testing.T) *Manager {
+func newManager(t *testing.T, secure bool) *Manager {
 	t.Helper()
 	st, err := store.Open(filepath.Join(t.TempDir(), "photo-server.db"))
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	return NewManager(st, 30*24*time.Hour)
+	return NewManager(st, 30*24*time.Hour, secure)
 }
 
 func sessionCookie(rec *httptest.ResponseRecorder) *http.Cookie {
@@ -45,7 +45,7 @@ func TestTokenValidity(t *testing.T) {
 }
 
 func TestEnsureIssuesAndPersistsCookie(t *testing.T) {
-	m := newManager(t)
+	m := newManager(t, false)
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -83,8 +83,27 @@ func TestEnsureIssuesAndPersistsCookie(t *testing.T) {
 	}
 }
 
+func TestSecureCookieWhenHTTPS(t *testing.T) {
+	m := newManager(t, true)
+	rec := httptest.NewRecorder()
+	if _, err := m.Ensure(rec, httptest.NewRequest(http.MethodGet, "/", nil)); err != nil {
+		t.Fatalf("Ensure: %v", err)
+	}
+	c := sessionCookie(rec)
+	if c == nil {
+		t.Fatal("no session cookie set")
+	}
+	if !c.Secure {
+		t.Error("cookie must be Secure when BaseURL is https (cloud/Caddy)")
+	}
+	// HttpOnly + SameSite must not regress when Secure flips on.
+	if !c.HttpOnly || c.SameSite != http.SameSiteLaxMode {
+		t.Errorf("HttpOnly=%v SameSite=%v, want true/Lax", c.HttpOnly, c.SameSite)
+	}
+}
+
 func TestAdoptRebindsLocalStorageToken(t *testing.T) {
-	m := newManager(t)
+	m := newManager(t, false)
 
 	// Simulate a returning guest whose cookie was dropped but whose
 	// localStorage token survived.
@@ -113,7 +132,7 @@ func TestAdoptRebindsLocalStorageToken(t *testing.T) {
 }
 
 func TestSetDisplayNamePersists(t *testing.T) {
-	m := newManager(t)
+	m := newManager(t, false)
 	rec := httptest.NewRecorder()
 	sess, _ := m.Ensure(rec, httptest.NewRequest(http.MethodGet, "/", nil))
 

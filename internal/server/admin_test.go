@@ -32,7 +32,7 @@ func adminTestServer(t *testing.T, password string) *Server {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	return New(":0", Deps{
 		Log: log, Version: "test", Store: st, Blobs: blobs,
-		Sessions:      session.NewManager(st, 24*time.Hour),
+		Sessions:      session.NewManager(st, 24*time.Hour, false),
 		MaxBody:       64 << 20,
 		AdminPassword: password,
 	})

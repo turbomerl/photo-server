@@ -35,7 +35,7 @@ func newTestServer(t *testing.T) *Server {
 		Store:    st,
 		Blobs:    blobs,
 		Convert:  nil, // upload tests don't exercise conversion
-		Sessions: session.NewManager(st, 24*time.Hour),
+		Sessions: session.NewManager(st, 24*time.Hour, false),
 		MaxBody:  64 << 20,
 	})
 }

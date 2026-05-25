@@ -1,0 +1,13 @@
+# Real variable values (incl. admin_password) — never commit.
+*.tfvars
+!*.tfvars.example
+
+# Terraform working dir + state. State lives in the GCS backend; any local
+# copy is throwaway and may contain secrets.
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Keep .terraform.lock.hcl committed (it pins provider versions).

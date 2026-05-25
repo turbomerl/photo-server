@@ -9,6 +9,7 @@ package config
 import (
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -59,6 +60,10 @@ type Config struct {
 	// BaseURL is the public URL guests open after joining wifi
 	// (e.g., http://photos.wedding/). Printed on the QR card.
 	BaseURL string
+	// IsHTTPS is true when BaseURL has an https scheme. It gates the
+	// Secure attribute on the guest session cookie — set behind Caddy
+	// TLS in the cloud, false on the plain-HTTP LAN.
+	IsHTTPS bool
 	// SSID/WiFiPSK populate the WIFI: URI QR (kgu.21). Empty hides
 	// the print page (nothing useful to render).
 	SSID    string
@@ -89,6 +94,13 @@ func Load() (Config, error) {
 		BaseURL:          getenv("BASE_URL", "http://photos.wedding/"),
 		SSID:             getenv("SSID", ""),
 		WiFiPSK:          getenv("WIFI_PSK", ""),
+	}
+
+	// Secure cookies when serving behind HTTPS (cloud/Caddy). url.Parse
+	// is tolerant — a malformed BaseURL just leaves IsHTTPS false, never
+	// errors (mirrors appHost() in internal/server/pages.go).
+	if u, err := url.Parse(c.BaseURL); err == nil && u.Scheme == "https" {
+		c.IsHTTPS = true
 	}
 
 	if v := getenv("DATA_DIR", ""); v != "" {
