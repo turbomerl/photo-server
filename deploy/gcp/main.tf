@@ -30,14 +30,14 @@ resource "google_service_account" "vm" {
 # --- Object storage: release artifact (binary + unit) and backup/archive --
 
 resource "google_storage_bucket" "release" {
-  name                        = "${var.project_id}-${local.name}-release"
+  name                        = "${var.project_id}-release"
   location                    = upper(var.region)
   uniform_bucket_level_access = true
   force_destroy               = true # just the binary; safe to wipe on destroy
 }
 
 resource "google_storage_bucket" "backup" {
-  name                        = "${var.project_id}-${local.name}-backup"
+  name                        = "${var.project_id}-backup"
   location                    = upper(var.region)
   uniform_bucket_level_access = true
   force_destroy               = false
@@ -144,11 +144,12 @@ resource "google_compute_instance" "vm" {
   }
 
   metadata_startup_script = templatefile("${path.module}/startup-script.sh", {
-    domain         = var.domain
-    admin_password = var.admin_password
-    release_bucket = google_storage_bucket.release.name
-    backup_bucket  = google_storage_bucket.backup.name
-    data_device    = "photo-data"
+    domain          = var.domain
+    admin_password  = var.admin_password
+    access_password = var.access_password
+    release_bucket  = google_storage_bucket.release.name
+    backup_bucket   = google_storage_bucket.backup.name
+    data_device     = "photo-data"
   })
 
   service_account {

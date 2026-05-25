@@ -28,6 +28,9 @@ var galleryJS []byte
 //go:embed assets/viewer.js
 var viewerJS []byte
 
+//go:embed assets/heart.js
+var heartJS []byte
+
 // One template set per page: base.html provides the shell + bottom
 // nav; the page file overrides the title/main/scripts blocks.
 func mustPage(page string) *template.Template {
@@ -60,6 +63,14 @@ type pageData struct {
 	// (kgu.18, the no-JS fallback for the lightbox).
 	ViewHash string
 	ViewName string
+	// ViewHearts/ViewHearted drive the heart control on the single-photo
+	// page (kgu.23).
+	ViewHearts  int64
+	ViewHearted bool
+	// Sort is the gallery mode: "" (All, newest-first) or "top" (Most
+	// loved leaderboard). Drives the tab UI and disables infinite scroll
+	// for the top view.
+	Sort string
 }
 
 // appHost is the bare host (no scheme/path) of the configured BaseURL,
@@ -75,8 +86,12 @@ func (s *Server) appHost() string {
 }
 
 // galleryPageSize is the gallery page size (server first page + each
-// infinite-scroll fetch).
-const galleryPageSize = 30
+// infinite-scroll fetch). topGalleryLimit caps the "Most loved"
+// leaderboard (fixed top-N, no infinite scroll).
+const (
+	galleryPageSize = 30
+	topGalleryLimit = 60
+)
 
 func (s *Server) renderPage(w http.ResponseWriter, t *template.Template, d pageData) {
 	d.Version = s.version
@@ -134,17 +149,33 @@ func (s *Server) handleUploadPage(w http.ResponseWriter, r *http.Request) {
 // The first page is rendered server-side so the Gallery is usable with
 // JavaScript disabled (PRD §5a); gallery.js adds infinite scroll.
 func (s *Server) handleGalleryPage(w http.ResponseWriter, r *http.Request) {
-	_, name := s.ensureName(w, r)
-	photos, err := s.st.GalleryPhotos(0, galleryPageSize)
+	id, name := s.ensureName(w, r)
+
+	var (
+		photos []store.PhotoListItem
+		err    error
+		next   int64
+		sort   string
+	)
+	if r.URL.Query().Get("sort") == "top" {
+		sort = "top"
+		photos, err = s.st.TopPhotos(id, topGalleryLimit) // fixed top-N, no infinite scroll
+	} else {
+		photos, err = s.st.GalleryPhotos(id, 0, galleryPageSize)
+		if err == nil {
+			next = nextCursor(photos)
+		}
+	}
 	if err != nil {
-		s.log.Error("gallery page query", "err", err)
+		s.log.Error("gallery page query", "err", err, "sort", sort)
 		// Still render the shell; the grid just starts empty.
 	}
 	s.renderPage(w, tplGallery, pageData{
 		Active:     "gallery",
 		Name:       name,
 		Photos:     photos,
-		NextBefore: nextCursor(photos),
+		NextBefore: next,
+		Sort:       sort,
 	})
 }
 
@@ -167,12 +198,18 @@ func (s *Server) handlePhotoPage(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	_, name := s.ensureName(w, r)
+	id, name := s.ensureName(w, r)
+	hearts, hearted, err := s.st.PhotoHeartState(hash, id)
+	if err != nil {
+		s.log.Error("photo page heart state", "err", err)
+	}
 	s.renderPage(w, tplPhoto, pageData{
-		Active:   "gallery",
-		Name:     name,
-		ViewHash: meta.Hash,
-		ViewName: meta.DisplayName,
+		Active:      "gallery",
+		Name:        name,
+		ViewHash:    meta.Hash,
+		ViewName:    meta.DisplayName,
+		ViewHearts:  hearts,
+		ViewHearted: hearted,
 	})
 }
 
@@ -213,4 +250,10 @@ func (s *Server) handleViewerJS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	_, _ = w.Write(viewerJS)
+}
+
+func (s *Server) handleHeartJS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	_, _ = w.Write(heartJS)
 }

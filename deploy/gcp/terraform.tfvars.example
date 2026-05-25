@@ -12,6 +12,10 @@ domain     = "photos.example.com" # FQDN guests open; A-record points here
 # Gates /admin (HTTP Basic). Use a strong value; empty disables admin.
 admin_password = "change-me-to-something-strong"
 
+# Shared event password gating the guest album. Baked into the entry QR
+# (scan = auto-enter) and accepted on the gate page. Empty = album open.
+access_password = "rosie-and-sam-2026"
+
 # For IAP-tunnel SSH: your identity. Empty if you'll grant it yourself or
 # already have it (e.g. project owner).
 iap_ssh_member = "user:you@example.com"

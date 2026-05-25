@@ -38,6 +38,13 @@ variable "admin_password" {
   sensitive   = true
 }
 
+variable "access_password" {
+  type        = string
+  description = "PHOTO_SERVER_ACCESS_PASSWORD — the shared event password gating the guest album. Baked into the entry QR (?k=) and accepted on the gate page. Empty leaves the album open to anyone with the URL."
+  sensitive   = true
+  default     = ""
+}
+
 variable "iap_ssh_member" {
   type        = string
   description = "Identity granted roles/iap.tunnelResourceAccessor for IAP-tunnel SSH, e.g. 'user:you@example.com'. Empty skips the binding (grant it yourself, or you already have it as project owner)."

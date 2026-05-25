@@ -101,18 +101,18 @@ func run() error {
 	}
 
 	srv := server.New(cfg.Addr, server.Deps{
-		Log:           logger,
-		Version:       version,
-		Store:         st,
-		Blobs:         blobs,
-		Convert:       pool,
-		Conv:          conv,
-		Sessions:      session.NewManager(st, cfg.SessionMaxAge, cfg.IsHTTPS),
-		MaxBody:       cfg.MaxUploadBytes,
-		AdminPassword: cfg.AdminPassword,
-		BaseURL:       cfg.BaseURL,
-		SSID:          cfg.SSID,
-		WiFiPSK:       cfg.WiFiPSK,
+		Log:            logger,
+		Version:        version,
+		Store:          st,
+		Blobs:          blobs,
+		Convert:        pool,
+		Conv:           conv,
+		Sessions:       session.NewManager(st, cfg.SessionMaxAge, cfg.IsHTTPS),
+		MaxBody:        cfg.MaxUploadBytes,
+		AdminPassword:  cfg.AdminPassword,
+		BaseURL:        cfg.BaseURL,
+		AccessPassword: cfg.AccessPassword,
+		Secure:         cfg.IsHTTPS,
 	})
 	return srv.Run(ctx, cfg.ShutdownTimeout)
 }

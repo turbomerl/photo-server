@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Print wifi/URL cards</title>
+<meta name="robots" content="noindex, nofollow">
+<title>Print album QR cards</title>
 <style>
 :root { --ink:#1c1c1e; --muted:#666; --line:#ccc; }
 * { box-sizing: border-box; }
@@ -28,18 +29,14 @@ body { margin:0; padding:20px; color:var(--ink);
 }
 .card h1 { font-size:22px; margin:0 0 4px; }
 .card .lead { color:var(--muted); margin-bottom:14px; font-size:13px; }
-.qrs { display:flex; gap:18px; width:100%; justify-content:space-around; }
 .qrbox { display:flex; flex-direction:column; align-items:center; }
-.qrbox img { width:170px; height:170px; image-rendering: pixelated; }
+.qrbox img { width:200px; height:200px; image-rendering: pixelated; }
 .qrbox span { font-size:12px; color:var(--muted); margin-top:4px; }
 .creds { margin-top:16px; line-height:1.5; }
-.steps { text-align:left; margin:0 auto 12px; max-width:18rem; font-size:13px; }
-.steps div { margin:3px 0; }
-.steps em { font-style:normal; font-weight:600; }
+.steps { text-align:center; margin:0 auto 10px; max-width:18rem; font-size:13px; }
 .creds .row { display:flex; gap:8px; justify-content:center; }
 .creds .k { color:var(--muted); }
 .creds .v { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.url { margin-top:6px; word-break:break-all; }
 
 @media print {
   @page { size: A4 portrait; margin: 0; }
@@ -60,22 +57,17 @@ body { margin:0; padding:20px; color:var(--ink);
 {{range .Cards}}
   <div class="card">
     <h1>📸 Wedding photos</h1>
-    <div class="lead">Scan to join the Wi-Fi, then open the album in your browser.</div>
-    <div class="qrs">
-      <div class="qrbox">
-        <img src="{{$.WIFIQR}}" alt="Wifi join QR">
-        <span>Scan to join Wi-Fi</span>
-      </div>
+    <div class="lead">Scan to open the album, then add your photos.</div>
+    <div class="qrbox">
+      <img src="{{$.QR}}" alt="Open album QR">
+      <span>Scan to open</span>
     </div>
     <div class="creds">
       <div class="steps">
-        <div><strong>1.</strong> Scan the QR → tap <em>Join</em>.</div>
-        <div><strong>2.</strong> In your browser go to
-          <span class="v">{{if $.Host}}{{$.Host}}{{else}}{{$.BaseURL}}{{end}}</span>
-          to take &amp; see photos.</div>
+        Or open <span class="v">{{$.Host}}</span> in your browser{{if $.Password}}
+        and enter the password{{end}}.
       </div>
-      <div class="row"><span class="k">network</span><span class="v">{{$.SSID}}</span></div>
-      <div class="row"><span class="k">password</span><span class="v">{{$.PSK}}</span></div>
+      {{if $.Password}}<div class="row"><span class="k">password</span><span class="v">{{$.Password}}</span></div>{{end}}
     </div>
   </div>
 {{end}}

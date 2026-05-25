@@ -6,8 +6,14 @@
     <img src="/photo/{{.ViewHash}}" alt="">
   </div>
   <p class="by">{{if .ViewName}}Shared by {{.ViewName}}{{else}}Shared anonymously{{end}}</p>
-  <p>
+  <p class="photo-actions">
+    <form class="heart{{if .ViewHearted}} on{{end}}" method="post" action="/photo/{{.ViewHash}}/heart" data-hash="{{.ViewHash}}">
+      <button type="submit" aria-pressed="{{if .ViewHearted}}true{{else}}false{{end}}" aria-label="Love this photo">
+        <span class="hi">♥</span> <span class="hc">{{.ViewHearts}}</span>
+      </button>
+    </form>
     <a class="dl" href="/original/{{.ViewHash}}" download>⤓ Download original</a>
   </p>
 </section>
 {{end}}
+{{define "scripts"}}<script src="/static/heart.js" defer></script>{{end}}

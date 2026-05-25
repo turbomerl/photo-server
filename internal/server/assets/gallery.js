@@ -39,8 +39,26 @@
     img.setAttribute("data-src", p.thumb_url);
     a.appendChild(img);
     li.appendChild(a);
+    li.appendChild(heartForm(p));
     grid.appendChild(li);
     lazy.observe(img);
+  }
+
+  // Matches the server-rendered heart <form>; heart.js handles submit.
+  function heartForm(p) {
+    var f = document.createElement("form");
+    f.className = "heart" + (p.hearted ? " on" : "");
+    f.method = "post";
+    f.action = "/photo/" + p.hash + "/heart";
+    f.setAttribute("data-hash", p.hash);
+    var b = document.createElement("button");
+    b.type = "submit";
+    b.setAttribute("aria-pressed", p.hearted ? "true" : "false");
+    b.setAttribute("aria-label", "Love this photo");
+    b.innerHTML = '<span class="hi">♥</span> <span class="hc"></span>';
+    b.querySelector(".hc").textContent = p.heart_count || 0;
+    f.appendChild(b);
+    return f;
   }
 
   var loading = false;

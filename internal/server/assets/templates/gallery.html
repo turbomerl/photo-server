@@ -1,16 +1,28 @@
 {{define "title"}}Gallery · Wedding photos{{end}}
 {{define "main"}}
 <section class="gallery">
+  <nav class="gallery-tabs" aria-label="Gallery view">
+    <a href="/gallery"{{if ne .Sort "top"}} class="active" aria-current="page"{{end}}>All</a>
+    <a href="/gallery?sort=top"{{if eq .Sort "top"}} class="active" aria-current="page"{{end}}>♥ Most loved</a>
+  </nav>
   <ul id="gal-grid" class="grid">
     {{range .Photos}}
-    <li class="cell"><a href="/p/{{.Hash}}" data-name="{{.DisplayName}}"><img loading="lazy" src="/thumb/{{.Hash}}" alt=""></a></li>
+    <li class="cell">
+      <a href="/p/{{.Hash}}" data-name="{{.DisplayName}}"><img loading="lazy" src="/thumb/{{.Hash}}" alt=""></a>
+      <form class="heart{{if .Hearted}} on{{end}}" method="post" action="/photo/{{.Hash}}/heart" data-hash="{{.Hash}}">
+        <button type="submit" aria-pressed="{{if .Hearted}}true{{else}}false{{end}}" aria-label="Love this photo">
+          <span class="hi">♥</span> <span class="hc">{{.HeartCount}}</span>
+        </button>
+      </form>
+    </li>
     {{else}}
-    <li class="empty" id="gal-empty">No photos yet — be the first to
-    share from <a href="/">Polaroid</a> or <a href="/upload">Upload</a>.</li>
+    <li class="empty" id="gal-empty">{{if eq .Sort "top"}}No hearts yet — tap the ♥ on photos you love.{{else}}No photos yet — be the first to
+    share from <a href="/">Polaroid</a> or <a href="/upload">Upload</a>.{{end}}</li>
     {{end}}
   </ul>
   <div id="gal-sentinel" class="sentinel" data-next-before="{{.NextBefore}}"></div>
 </section>
 {{end}}
 {{define "scripts"}}<script src="/static/gallery.js" defer></script>
-<script src="/static/viewer.js" defer></script>{{end}}
+<script src="/static/viewer.js" defer></script>
+<script src="/static/heart.js" defer></script>{{end}}

@@ -69,6 +69,7 @@ PHOTO_SERVER_ADDR=127.0.0.1:8080
 PHOTO_SERVER_BASE_URL=https://${domain}/
 PHOTO_SERVER_DATA_DIR=/var/lib/photo-server
 PHOTO_SERVER_ADMIN_PASSWORD=${admin_password}
+PHOTO_SERVER_ACCESS_PASSWORD=${access_password}
 ENVEOF
 chmod 0640 /etc/photo-server/photo-server.env
 chown photo-server:photo-server /etc/photo-server/photo-server.env
@@ -115,10 +116,15 @@ Persistent=true
 WantedBy=timers.target
 TIMEREOF
 
-# 8) Enable + (re)start everything.
+# 8) Enable + (re)start everything. Use restart, not enable --now: this
+#    script re-runs on every boot, and on a reboot systemd has already
+#    started the (old) photo-server unit before we run — enable --now
+#    would be a no-op and the freshly-downloaded binary / rewritten env
+#    would never take effect. restart guarantees the new one is loaded.
 systemctl daemon-reload
-systemctl enable --now photo-server
-systemctl enable --now photo-server-backup.timer
+systemctl enable photo-server.service photo-server-backup.timer
+systemctl restart photo-server.service
+systemctl start photo-server-backup.timer
 systemctl reload caddy || systemctl restart caddy
 
 echo "[photo-server-init] complete at $(date -u)"
