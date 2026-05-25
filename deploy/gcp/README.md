@@ -149,9 +149,21 @@ and drop `prevent_destroy` on `google_storage_bucket.backup`, then delete.
   VM's startup script (instance metadata) via `terraform.tfvars`. Fine for
   the solo/trusted threat model. Upgrade: store them in Secret Manager,
   grant the VM SA `roles/secretmanager.secretAccessor`, and fetch at boot.
-- **Updating the app:** `make build-linux`, re-upload to the release
-  bucket, then `gcloud compute instances reset` (or SSH + re-run the
-  startup steps). The script re-downloads the binary on every boot.
+- **Updating the app:** `make build-linux` → re-upload to the release
+  bucket → `gcloud compute instances reset <name> --zone <zone>`. On
+  reboot the startup script re-downloads the binary, rewrites the env,
+  and **restarts** the service so the new build takes effect. No-reboot
+  shortcut: `gcloud compute ssh <name> --zone <zone> --tunnel-through-iap
+  --command="sudo gsutil cp gs://<release-bucket>/photo-server
+  /usr/local/bin/photo-server && sudo systemctl restart photo-server"`.
+- **ForceNew caveat:** `metadata_startup_script` (and the boot image,
+  machine type, …) are replace-on-change in the google provider, so
+  editing `startup-script.sh` and running `terraform apply` **replaces
+  the instance** — safe (the data disk + static IP are separate
+  resources and survive a brief reprovision), but do it deliberately, not
+  casually. To change only the startup script without a replace, push it
+  live: `gcloud compute instances add-metadata <name> --zone <zone>
+  --metadata-from-file startup-script=<rendered.sh>`.
 - **DNS via Cloud DNS instead of a registrar:** add a
   `google_dns_record_set` against your managed zone; the static IP output
   is the rrdata.
