@@ -130,14 +130,14 @@ func TestSessionAndGalleryPhotoFeeds(t *testing.T) {
 	}
 
 	// GalleryPhotos: all visible newest-first, keyset paginated.
-	page1, err := s.GalleryPhotos(0, 2)
+	page1, err := s.GalleryPhotos("", 0, 2)
 	if err != nil {
 		t.Fatalf("GalleryPhotos p1: %v", err)
 	}
 	if len(page1) != 2 || page1[0].Hash != "p4" || page1[1].Hash != "p2" {
 		t.Fatalf("gallery page1 = %+v, want [p4 p2]", page1)
 	}
-	page2, err := s.GalleryPhotos(page1[1].ID, 2)
+	page2, err := s.GalleryPhotos("", page1[1].ID, 2)
 	if err != nil {
 		t.Fatalf("GalleryPhotos p2: %v", err)
 	}

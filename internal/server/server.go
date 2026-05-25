@@ -99,6 +99,9 @@ func New(addr string, d Deps) *Server {
 	mux.HandleFunc("GET /photo/{hash}", s.handlePhotoView)
 	mux.HandleFunc("GET /original/{hash}", s.handleOriginalDownload)
 
+	// Anonymous hearts (kgu.23): toggle the guest's heart on a photo.
+	mux.HandleFunc("POST /photo/{hash}/heart", s.handleHeart)
+
 	// Admin (kgu.19) — gated by HTTP Basic against AdminPassword; if
 	// the password is empty every admin route 404s (fail-closed).
 	mux.HandleFunc("GET /admin", s.handleAdminDashboard)
