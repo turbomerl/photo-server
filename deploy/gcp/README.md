@@ -23,15 +23,15 @@ Cookie `Secure` gating (`ycl`) ships in the app binary.
 The GCS backend can't bootstrap itself. Create the bucket once:
 
 ```bash
-gsutil mb -b on -l europe-west2 gs://photo-server-tfstate-<project>
-gsutil versioning set on gs://photo-server-tfstate-<project>
+gsutil mb -b on -l europe-west2 gs://<project>-tfstate
+gsutil versioning set on gs://<project>-tfstate
 ```
 
 ## Step 1 — configure
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars   # then edit (gitignored)
-terraform init -backend-config="bucket=photo-server-tfstate-<project>"
+terraform init -backend-config="bucket=<project>-tfstate"
 ```
 
 ## Step 2 — build + stage the binary
@@ -110,7 +110,7 @@ bucket, **and the disposable data disk**. The **backup bucket is
 gcloud compute instances list   # empty
 gcloud compute addresses list   # empty
 gcloud compute disks list       # empty (data disk gone)
-gsutil ls gs://$(terraform output -raw backup_bucket 2>/dev/null || echo <project>-photo-server-backup)/   # archive still there
+gsutil ls gs://$(terraform output -raw backup_bucket 2>/dev/null || echo <project>-backup)/   # archive still there
 ```
 
 To later remove the archive too: temporarily set `force_destroy = true`

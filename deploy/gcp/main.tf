@@ -30,14 +30,14 @@ resource "google_service_account" "vm" {
 # --- Object storage: release artifact (binary + unit) and backup/archive --
 
 resource "google_storage_bucket" "release" {
-  name                        = "${var.project_id}-${local.name}-release"
+  name                        = "${var.project_id}-release"
   location                    = upper(var.region)
   uniform_bucket_level_access = true
   force_destroy               = true # just the binary; safe to wipe on destroy
 }
 
 resource "google_storage_bucket" "backup" {
-  name                        = "${var.project_id}-${local.name}-backup"
+  name                        = "${var.project_id}-backup"
   location                    = upper(var.region)
   uniform_bucket_level_access = true
   force_destroy               = false

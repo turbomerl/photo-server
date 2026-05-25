@@ -12,7 +12,7 @@ terraform {
   # weeks later from any checkout (a lost local state would orphan the
   # billable static IP + disk). The bucket must exist BEFORE `init` — see
   # README step 0 — and is supplied at init time:
-  #   terraform init -backend-config="bucket=photo-server-tfstate-<project>"
+  #   terraform init -backend-config="bucket=<project>-tfstate"
   backend "gcs" {
     prefix = "deploy/gcp"
   }
