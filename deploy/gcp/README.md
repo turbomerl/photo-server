@@ -9,6 +9,12 @@ lifecycle: provision → rehearsal → event → final backup → `terraform des
 `9wv` (persistent disk), `apt` (libvips on the host), `kgu.24` (GCS backup).
 Cookie `Secure` gating (`ycl`) ships in the app binary.
 
+> **Working directory:** run every command below **from the repo root**
+> (`photo-server/`), where `make build-linux` drops the binary. Terraform
+> lives in `deploy/gcp/`, so all `terraform` commands use
+> `-chdir=deploy/gcp`. (Or `cd deploy/gcp` and drop `-chdir`, but then the
+> binary is at `../../photo-server-linux-amd64`.)
+
 ## Prerequisites
 
 - `terraform`, `gcloud`, `gsutil` installed; `gcloud auth login` +
@@ -30,25 +36,36 @@ gsutil versioning set on gs://<project>-tfstate
 ## Step 1 — configure
 
 ```bash
-cp terraform.tfvars.example terraform.tfvars   # then edit (gitignored)
-terraform init -backend-config="bucket=<project>-tfstate"
+cp deploy/gcp/terraform.tfvars.example deploy/gcp/terraform.tfvars   # then edit (gitignored)
+terraform -chdir=deploy/gcp init -backend-config="bucket=<project>-tfstate"
 ```
 
 ## Step 2 — build + stage the binary
 
-The disposable VM downloads the binary from the release bucket on boot.
-Build it (static linux/amd64) and, after the release bucket exists, upload
-it. Two ways to handle the ordering:
+The disposable VM downloads the binary from the release bucket on boot, so
+the release bucket must exist and hold the binary first.
 
-**Recommended (target the bucket first, then upload, then full apply):**
 ```bash
-make build-linux                                   # from repo root -> photo-server-linux-amd64
-terraform apply -target=google_storage_bucket.release \
-                -target=google_storage_bucket_iam_member.release_read
-# then use the upload_command / release_bucket from outputs:
-gsutil cp photo-server-linux-amd64 gs://$(terraform output -raw release_bucket)/photo-server
-gsutil cp ../photo-server.service  gs://$(terraform output -raw release_bucket)/photo-server.service
+make build-linux                       # -> ./photo-server-linux-amd64
+
+# create just the release bucket + its IAM, so we can upload before the VM:
+terraform -chdir=deploy/gcp apply \
+  -target=google_storage_bucket.release \
+  -target=google_storage_bucket_iam_member.release_read
+
+# upload the binary + systemd unit. The upload_command output has the
+# resolved bucket name and repo-root-relative paths baked in:
+eval "$(terraform -chdir=deploy/gcp output -raw upload_command)"
 ```
+
+<details><summary>…or upload explicitly</summary>
+
+```bash
+BUCKET=$(terraform -chdir=deploy/gcp output -raw release_bucket)
+gsutil cp photo-server-linux-amd64    gs://$BUCKET/photo-server
+gsutil cp deploy/photo-server.service gs://$BUCKET/photo-server.service
+```
+</details>
 
 (The startup script also waits up to ~5 min for the binary, so a single
 `terraform apply` works too as long as you upload within that window; it
@@ -57,8 +74,8 @@ self-heals on reboot regardless.)
 ## Step 3 — apply
 
 ```bash
-terraform apply
-terraform output dns_instructions     # -> create this A-record at your registrar
+terraform -chdir=deploy/gcp apply
+terraform -chdir=deploy/gcp output dns_instructions   # -> create this A-record at your registrar
 ```
 
 Create the A-record, then confirm it resolves:
@@ -69,7 +86,7 @@ dig +short <domain>      # should print the static_ip output
 ## Step 4 — verify
 
 ```bash
-gcloud compute ssh "$(terraform output -raw instance_name)" --zone <zone> --tunnel-through-iap
+gcloud compute ssh "$(terraform -chdir=deploy/gcp output -raw instance_name)" --zone <zone> --tunnel-through-iap
 #   on the box:
 sudo systemctl status photo-server caddy
 findmnt /var/lib/photo-server
@@ -90,8 +107,9 @@ Runs hourly automatically. Force one (e.g. before teardown):
 ```bash
 # on the box:
 sudo systemctl start photo-server-backup.service
-gsutil ls gs://$(terraform output -raw backup_bucket)/db/
-gsutil ls gs://$(terraform output -raw backup_bucket)/originals/
+# from your laptop:
+gsutil ls gs://$(terraform -chdir=deploy/gcp output -raw backup_bucket)/db/
+gsutil ls gs://$(terraform -chdir=deploy/gcp output -raw backup_bucket)/originals/
 ```
 
 ## Step 6 — teardown (after the event)
@@ -100,7 +118,7 @@ gsutil ls gs://$(terraform output -raw backup_bucket)/originals/
 # 1) final archive sync (on the box):
 sudo systemctl start photo-server-backup.service
 # 2) destroy everything billable in one shot:
-terraform destroy
+terraform -chdir=deploy/gcp destroy
 ```
 
 `destroy` removes the VM, static IP, firewalls, service account, release
@@ -110,7 +128,7 @@ bucket, **and the disposable data disk**. The **backup bucket is
 gcloud compute instances list   # empty
 gcloud compute addresses list   # empty
 gcloud compute disks list       # empty (data disk gone)
-gsutil ls gs://$(terraform output -raw backup_bucket 2>/dev/null || echo <project>-backup)/   # archive still there
+gsutil ls gs://$(terraform -chdir=deploy/gcp output -raw backup_bucket 2>/dev/null || echo <project>-backup)/   # archive still there
 ```
 
 To later remove the archive too: temporarily set `force_destroy = true`
