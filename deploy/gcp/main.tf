@@ -144,11 +144,12 @@ resource "google_compute_instance" "vm" {
   }
 
   metadata_startup_script = templatefile("${path.module}/startup-script.sh", {
-    domain         = var.domain
-    admin_password = var.admin_password
-    release_bucket = google_storage_bucket.release.name
-    backup_bucket  = google_storage_bucket.backup.name
-    data_device    = "photo-data"
+    domain          = var.domain
+    admin_password  = var.admin_password
+    access_password = var.access_password
+    release_bucket  = google_storage_bucket.release.name
+    backup_bucket   = google_storage_bucket.backup.name
+    data_device     = "photo-data"
   })
 
   service_account {

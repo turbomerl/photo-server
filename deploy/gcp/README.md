@@ -95,6 +95,11 @@ curl -fsS http://127.0.0.1:8080/healthz
 # from your laptop, once DNS + cert are up (Caddy issues on first request):
 curl -fsS https://<domain>/healthz
 curl -sI https://<domain>/ | grep -i set-cookie   # ps_session ... Secure; HttpOnly; SameSite=Lax
+
+# access gate (if access_password set): bare URL shows the gate; the QR
+# key auto-enters (303 -> /, sets ps_access):
+curl -s https://<domain>/ | grep -c 'action="/access"'              # 1 = gated
+curl -sI "https://<domain>/?k=<access_password>" | grep -i location  # 303 -> /
 ```
 
 Then browser smoke test: set a name, upload a HEIC (exercises
@@ -136,11 +141,14 @@ and drop `prevent_destroy` on `google_storage_bucket.backup`, then delete.
 
 ## Notes
 
-- **Secrets:** `admin_password` is rendered into the VM's startup script
-  (instance metadata) via `terraform.tfvars`. Fine for the solo/trusted
-  threat model. Upgrade: store it in Secret Manager, grant the VM SA
-  `roles/secretmanager.secretAccessor`, and fetch it at boot in the
-  startup script.
+- **Access gate:** set `access_password` to gate the guest album behind a
+  shared event password (`/admin/print` bakes it into the entry QR as `?k=`,
+  so scanning auto-enters; the gate page also accepts it typed). Empty
+  leaves the album open to anyone with the URL.
+- **Secrets:** `admin_password` + `access_password` are rendered into the
+  VM's startup script (instance metadata) via `terraform.tfvars`. Fine for
+  the solo/trusted threat model. Upgrade: store them in Secret Manager,
+  grant the VM SA `roles/secretmanager.secretAccessor`, and fetch at boot.
 - **Updating the app:** `make build-linux`, re-upload to the release
   bucket, then `gcloud compute instances reset` (or SSH + re-run the
   startup steps). The script re-downloads the binary on every boot.

@@ -29,45 +29,48 @@ type Deps struct {
 	Sessions      *session.Manager
 	MaxBody       int64
 	AdminPassword string
-	// BaseURL is the app URL printed on the QR card (e.g.
-	// http://photos.wedding/).
+	// BaseURL is the app URL printed on the entry QR (e.g.
+	// https://photos.example.com/).
 	BaseURL string
-	// SSID + WiFiPSK feed the print page's WIFI: QR (kgu.21).
-	SSID    string
-	WiFiPSK string
+	// AccessPassword is the shared event secret gating the guest surface
+	// (ycl); empty disables the gate. Secure sets the access cookie's
+	// Secure flag (true behind HTTPS).
+	AccessPassword string
+	Secure         bool
 }
 
 // Server wraps the HTTP server and its dependencies.
 type Server struct {
-	log           *slog.Logger
-	version       string
-	st            *store.Store
-	blobs         *blobstore.Store
-	conv          *convert.Pool
-	convr         *convert.Converter
-	sessions      *session.Manager
-	maxBody       int64
-	adminPassword string
-	baseURL       string
-	ssid, wifiPSK string
-	httpSrv       *http.Server
+	log            *slog.Logger
+	version        string
+	st             *store.Store
+	blobs          *blobstore.Store
+	conv           *convert.Pool
+	convr          *convert.Converter
+	sessions       *session.Manager
+	maxBody        int64
+	adminPassword  string
+	baseURL        string
+	accessPassword string
+	secure         bool
+	httpSrv        *http.Server
 }
 
 // New builds a Server listening on addr with the given dependencies.
 func New(addr string, d Deps) *Server {
 	s := &Server{
-		log:           d.Log,
-		version:       d.Version,
-		st:            d.Store,
-		blobs:         d.Blobs,
-		conv:          d.Convert,
-		convr:         d.Conv,
-		sessions:      d.Sessions,
-		maxBody:       d.MaxBody,
-		adminPassword: d.AdminPassword,
-		baseURL:       d.BaseURL,
-		ssid:          d.SSID,
-		wifiPSK:       d.WiFiPSK,
+		log:            d.Log,
+		version:        d.Version,
+		st:             d.Store,
+		blobs:          d.Blobs,
+		conv:           d.Convert,
+		convr:          d.Conv,
+		sessions:       d.Sessions,
+		maxBody:        d.MaxBody,
+		adminPassword:  d.AdminPassword,
+		baseURL:        d.BaseURL,
+		accessPassword: d.AccessPassword,
+		secure:         d.Secure,
 	}
 
 	mux := http.NewServeMux()
@@ -105,15 +108,14 @@ func New(addr string, d Deps) *Server {
 	mux.HandleFunc("POST /admin/shutdown", s.handleAdminShutdown)
 	mux.HandleFunc("GET /admin/print", s.handlePrintPage)
 
-	// No captive portal (kgu.6, final): dnsmasq resolves only
-	// photos.wedding, so phones see plain "no internet" and Android
-	// offers the obvious "Stay connected?" approval. Nothing to
-	// intercept here — just the access log.
+	// requireAccess gates the guest surface behind the shared event
+	// password (ycl); it is a no-op when AccessPassword is empty.
+	// logRequests stays outermost so gate hits are logged too.
 	s.httpSrv = &http.Server{
 		Addr:    addr,
-		Handler: s.logRequests(mux),
-		// Bound slow-loris header reads; appliance is on a trusted LAN
-		// but a stuck phone shouldn't tie up a connection forever.
+		Handler: s.logRequests(s.requireAccess(mux)),
+		// Bound slow-loris header reads so a stuck client can't tie up a
+		// connection forever.
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	return s
@@ -163,6 +165,8 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 // during an all-day event.
 func (s *Server) logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Private album: keep every response out of search indexes.
+		w.Header().Set("X-Robots-Tag", "noindex")
 		start := time.Now()
 		next.ServeHTTP(w, r)
 		s.log.Debug("request",

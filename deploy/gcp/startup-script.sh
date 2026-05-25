@@ -69,6 +69,7 @@ PHOTO_SERVER_ADDR=127.0.0.1:8080
 PHOTO_SERVER_BASE_URL=https://${domain}/
 PHOTO_SERVER_DATA_DIR=/var/lib/photo-server
 PHOTO_SERVER_ADMIN_PASSWORD=${admin_password}
+PHOTO_SERVER_ACCESS_PASSWORD=${access_password}
 ENVEOF
 chmod 0640 /etc/photo-server/photo-server.env
 chown photo-server:photo-server /etc/photo-server/photo-server.env

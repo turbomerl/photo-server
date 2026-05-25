@@ -14,7 +14,7 @@ import (
 	"github.com/turbomerl/photo-server/internal/store"
 )
 
-func printServer(t *testing.T, ssid, psk, base string) *Server {
+func printServer(t *testing.T, base, access string) *Server {
 	t.Helper()
 	dir := t.TempDir()
 	st, err := store.Open(filepath.Join(dir, "photo-server.db"))
@@ -28,48 +28,44 @@ func printServer(t *testing.T, ssid, psk, base string) *Server {
 		Log: log, Version: "test", Store: st, Blobs: blobs,
 		Sessions: session.NewManager(st, time.Hour, false),
 		MaxBody:  64 << 20, AdminPassword: "pw",
-		BaseURL: base, SSID: ssid, WiFiPSK: psk,
+		BaseURL: base, AccessPassword: access,
 	})
 }
 
 func TestPrintPageRequiresAdmin(t *testing.T) {
-	s := printServer(t, "photo-server", "photos2026", "http://photos.wedding/")
+	s := printServer(t, "https://photos.example.com/", "letmein")
 	if rec := doAdmin(t, s, http.MethodGet, "/admin/print", ""); rec.Code != http.StatusUnauthorized {
 		t.Fatalf("no creds = %d, want 401", rec.Code)
 	}
 }
 
 func TestPrintPageNotConfigured(t *testing.T) {
-	s := printServer(t, "", "", "")
+	s := printServer(t, "", "")
 	rec := doAdmin(t, s, http.MethodGet, "/admin/print", "pw")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "PHOTO_SERVER_SSID") {
-		t.Error("missing 'configure these env vars' guidance")
+	if !strings.Contains(rec.Body.String(), "PHOTO_SERVER_BASE_URL") {
+		t.Error("missing 'configure BASE_URL' guidance")
 	}
 }
 
-func TestPrintPageRendersQRsAndLabels(t *testing.T) {
-	s := printServer(t, "photo-server", "photos2026", "http://photos.wedding/")
+func TestPrintPageRendersEntryQRAndPassword(t *testing.T) {
+	s := printServer(t, "https://photos.example.com/", "letmein")
 	rec := doAdmin(t, s, http.MethodGet, "/admin/print", "pw")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)
 	}
 	b := rec.Body.String()
-	// One Wi-Fi QR per card (4 cards). No URL QR (single-QR by design).
+	// One entry QR per card (4 cards).
 	if c := strings.Count(b, `src="data:image/png;base64,`); c != 4 {
 		t.Errorf("expected 4 QR data URLs (one per card), got %d", c)
 	}
-	if strings.Contains(b, "Open album") {
-		t.Error("the second URL QR should be gone (single-QR card)")
-	}
 	for _, want := range []string{
-		"photo-server",   // SSID label
-		"photos2026",     // PSK label
-		"photos.wedding", // host to open in a browser
-		"window.print()", // print button
-		"@page",          // print CSS
+		"photos.example.com", // host to open in a browser
+		"letmein",            // the event password printed on the card
+		"window.print()",     // print button
+		"@page",              // print CSS
 	} {
 		if !strings.Contains(b, want) {
 			t.Errorf("print body missing %q", want)
@@ -77,10 +73,15 @@ func TestPrintPageRendersQRsAndLabels(t *testing.T) {
 	}
 }
 
-func TestWIFIURIEscaping(t *testing.T) {
-	got := wifiEscape(`tricky; weird: "ssid", with\back`)
-	want := `tricky\; weird\: \"ssid\"\, with\\back`
-	if got != want {
-		t.Errorf("wifiEscape =\n  %q\n  want\n  %q", got, want)
+func TestEntryURLBakesInKey(t *testing.T) {
+	s := printServer(t, "https://photos.example.com/", "letmein")
+	got := s.entryURL()
+	if got != "https://photos.example.com/?k=letmein" {
+		t.Errorf("entryURL = %q", got)
+	}
+	// No password -> bare BASE_URL.
+	s2 := printServer(t, "https://photos.example.com/", "")
+	if got := s2.entryURL(); got != "https://photos.example.com/" {
+		t.Errorf("entryURL (no key) = %q", got)
 	}
 }

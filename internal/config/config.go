@@ -64,10 +64,11 @@ type Config struct {
 	// Secure attribute on the guest session cookie — set behind Caddy
 	// TLS in the cloud, false on the plain-HTTP LAN.
 	IsHTTPS bool
-	// SSID/WiFiPSK populate the WIFI: URI QR (kgu.21). Empty hides
-	// the print page (nothing useful to render).
-	SSID    string
-	WiFiPSK string
+	// AccessPassword is the shared event secret that gates the guest
+	// surface on the public internet (ycl). It is baked into the entry
+	// QR as ?k= for scan-to-enter, and accepted via the gate page's
+	// password box. Empty disables the gate — only safe on a trusted LAN.
+	AccessPassword string
 }
 
 const envPrefix = "PHOTO_SERVER_"
@@ -92,8 +93,7 @@ func Load() (Config, error) {
 		SessionMaxAge:    30 * 24 * time.Hour, // ~30 days
 		AdminPassword:    getenv("ADMIN_PASSWORD", ""),
 		BaseURL:          getenv("BASE_URL", "http://photos.wedding/"),
-		SSID:             getenv("SSID", ""),
-		WiFiPSK:          getenv("WIFI_PSK", ""),
+		AccessPassword:   getenv("ACCESS_PASSWORD", ""),
 	}
 
 	// Secure cookies when serving behind HTTPS (cloud/Caddy). url.Parse
