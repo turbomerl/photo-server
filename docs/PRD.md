@@ -1,8 +1,16 @@
 # Photo Server — Product Requirements Document
 
-**Status:** Draft v0.3
+> **⚠️ ARCHITECTURE PIVOT (2026-05-25): now CLOUD-HOSTED, not a local LAN
+> appliance.** The venue's cellular tested ~10 Mbps, so the offline-first
+> design below (own AP, dnsmasq, captive portal, no internet) is being
+> replaced by a public HTTPS app guests reach over their own cellular.
+> Most product requirements still hold; the offline/networking sections do
+> not. See **`docs/CLOUD_HANDOVER.md`** and bead `photo_server-gj4` for the
+> reconcile. Read that before treating anything below as current.
+
+**Status:** Draft v0.3 — *offline sections superseded by the cloud pivot*
 **Owner:** isambardpoulson@gmail.com
-**Last updated:** 2026-05-01
+**Last updated:** 2026-05-25
 
 **Target deployment:** the owner's own wedding — one-off, single-day,
 up to 150 guests. Venue is a courtyard/house + a marquee that are *not*

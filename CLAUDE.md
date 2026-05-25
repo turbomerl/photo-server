@@ -63,7 +63,15 @@ design decision (no cloud auth, no CDNs, no third-party fonts, no telemetry).
 
 ## Status
 
-Pre-implementation but design decisions are mostly settled:
+> **⚠️ PIVOTED TO CLOUD (2026-05-25).** The local-LAN appliance below is
+> superseded — the venue has ~10 Mbps cellular, so we're building a
+> **cloud-hosted** app guests reach over a public HTTPS URL. The AP /
+> dnsmasq / NAT / captive-portal / offline-first material in this file and
+> the PRD is now history (kept for reference + git revert). Start from
+> **`docs/CLOUD_HANDOVER.md`**, then `bd ready` (cloud backlog:
+> `photo_server-rrh/9wv/ycl/gj4/3rz/apt/jz9`).
+
+The original LAN-appliance design (mostly settled, now superseded):
 
 - **Target hardware:** existing Dell mini-PC running Ubuntu (server) +
   Ubiquiti UAP-AC-LR (single AP, marquee, PoE-powered via bundled
