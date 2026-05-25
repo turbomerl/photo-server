@@ -1,0 +1,17 @@
+# Copy to terraform.tfvars (gitignored) and fill in real values.
+
+project_id = "your-gcp-project-id"
+region     = "europe-west2"      # nearest the venue
+zone       = "europe-west2-a"
+domain     = "photos.example.com" # FQDN guests open; A-record points here
+
+# Optional (defaults shown):
+# machine_type = "e2-small"   # bump to e2-medium for a heavy HEIC burst
+# disk_size_gb = 50
+
+# Gates /admin (HTTP Basic). Use a strong value; empty disables admin.
+admin_password = "change-me-to-something-strong"
+
+# For IAP-tunnel SSH: your identity. Empty if you'll grant it yourself or
+# already have it (e.g. project owner).
+iap_ssh_member = "user:you@example.com"
