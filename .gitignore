@@ -6,8 +6,10 @@
 *.db-shm
 .beads-credential-key
 
-# Go build artifact (single binary, built by `make build`)
+# Go build artifacts: the single binary (`make build`) and the
+# cross-compiled linux/amd64 binary (`make build-linux`) for the GCP VM.
 /photo-server
+/photo-server-linux-amd64
 
 # Local dev data dir (SQLite + photos). On the device this is the
 # systemd StateDirectory at /var/lib/photo-server, never in-repo.

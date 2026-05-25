@@ -107,7 +107,7 @@ func run() error {
 		Blobs:         blobs,
 		Convert:       pool,
 		Conv:          conv,
-		Sessions:      session.NewManager(st, cfg.SessionMaxAge),
+		Sessions:      session.NewManager(st, cfg.SessionMaxAge, cfg.IsHTTPS),
 		MaxBody:       cfg.MaxUploadBytes,
 		AdminPassword: cfg.AdminPassword,
 		BaseURL:       cfg.BaseURL,

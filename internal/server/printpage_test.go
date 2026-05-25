@@ -26,7 +26,7 @@ func printServer(t *testing.T, ssid, psk, base string) *Server {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	return New(":0", Deps{
 		Log: log, Version: "test", Store: st, Blobs: blobs,
-		Sessions: session.NewManager(st, time.Hour),
+		Sessions: session.NewManager(st, time.Hour, false),
 		MaxBody:  64 << 20, AdminPassword: "pw",
 		BaseURL: base, SSID: ssid, WiFiPSK: psk,
 	})

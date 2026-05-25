@@ -32,12 +32,15 @@ const tokenBytes = 32
 type Manager struct {
 	st     *store.Store
 	maxAge time.Duration
+	secure bool
 }
 
 // NewManager builds a session manager. maxAge is the cookie lifetime
-// (PRD: no expiry within the event window).
-func NewManager(st *store.Store, maxAge time.Duration) *Manager {
-	return &Manager{st: st, maxAge: maxAge}
+// (PRD: no expiry within the event window). secure sets the cookie's
+// Secure attribute — true behind HTTPS (cloud/Caddy), false on the
+// plain-HTTP LAN where a Secure cookie would be silently dropped.
+func NewManager(st *store.Store, maxAge time.Duration, secure bool) *Manager {
+	return &Manager{st: st, maxAge: maxAge, secure: secure}
 }
 
 // NewToken returns a fresh URL-safe random token.
@@ -107,8 +110,9 @@ func (m *Manager) SetDisplayName(token, name string) error {
 //
 //   - HttpOnly: JS can't read it (the localStorage mirror is the
 //     JS-visible copy, refreshed via /session).
-//   - Secure=false: the appliance serves plain HTTP on the LAN
-//     (PRD F4 / §9.7); a Secure cookie would be silently dropped.
+//   - Secure=m.secure: true behind HTTPS (cloud/Caddy). On the legacy
+//     plain-HTTP LAN it stays false, since a Secure cookie would be
+//     silently dropped (PRD F4 / §9.7).
 //   - SameSite=Lax: same-origin app; safe default.
 func (m *Manager) setCookie(w http.ResponseWriter, token string) {
 	http.SetCookie(w, &http.Cookie{
@@ -117,7 +121,7 @@ func (m *Manager) setCookie(w http.ResponseWriter, token string) {
 		Path:     "/",
 		MaxAge:   int(m.maxAge.Seconds()),
 		HttpOnly: true,
-		Secure:   false,
+		Secure:   m.secure,
 		SameSite: http.SameSiteLaxMode,
 	})
 }

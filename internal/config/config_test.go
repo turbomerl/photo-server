@@ -51,11 +51,25 @@ func TestLoadDefaults(t *testing.T) {
 	if c.BaseURL != "http://photos.wedding/" {
 		t.Errorf("BaseURL default = %q", c.BaseURL)
 	}
+	if c.IsHTTPS {
+		t.Error("IsHTTPS = true for default http BaseURL, want false")
+	}
 	if c.SSID != "" || c.WiFiPSK != "" {
 		t.Errorf("QR defaults should be empty: ssid=%q psk=%q", c.SSID, c.WiFiPSK)
 	}
 	if c.VipsThumbnailBin != "vipsthumbnail" {
 		t.Errorf("VipsThumbnailBin = %q, want vipsthumbnail", c.VipsThumbnailBin)
+	}
+}
+
+func TestLoadIsHTTPSFromBaseURL(t *testing.T) {
+	t.Setenv("PHOTO_SERVER_BASE_URL", "https://photos.example.com/")
+	c, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !c.IsHTTPS {
+		t.Errorf("IsHTTPS = false for https BaseURL %q, want true", c.BaseURL)
 	}
 }
 
