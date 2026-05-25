@@ -65,6 +65,26 @@ func (s *Store) ToggleHeart(hash, sessionID string) (count int64, hearted, ok bo
 	return count, hearted, true, nil
 }
 
+// PhotoHeartState returns a visible photo's heart count and whether the
+// viewer's session hearts it — for the server-rendered single-photo
+// page (kgu.18 + kgu.23). A missing/hidden photo reports 0, false.
+func (s *Store) PhotoHeartState(hash, viewerSessionID string) (count int64, hearted bool, err error) {
+	var h int
+	err = s.db.QueryRow(`
+		SELECT p.heart_count, (x.session_id IS NOT NULL)
+		FROM photos p
+		LEFT JOIN hearts x ON x.photo_id = p.id AND x.session_id = ?
+		WHERE p.content_hash = ? AND p.hidden_at IS NULL`,
+		viewerSessionID, hash).Scan(&count, &h)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return count, h != 0, nil
+}
+
 // TopPhotos returns the most-hearted visible photos (the "Most loved"
 // leaderboard, kgu.23), hearts-desc then newest-first, capped at limit.
 // Photos with zero hearts are excluded. viewerSessionID flags which

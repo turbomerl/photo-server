@@ -28,6 +28,9 @@ var galleryJS []byte
 //go:embed assets/viewer.js
 var viewerJS []byte
 
+//go:embed assets/heart.js
+var heartJS []byte
+
 // One template set per page: base.html provides the shell + bottom
 // nav; the page file overrides the title/main/scripts blocks.
 func mustPage(page string) *template.Template {
@@ -60,6 +63,10 @@ type pageData struct {
 	// (kgu.18, the no-JS fallback for the lightbox).
 	ViewHash string
 	ViewName string
+	// ViewHearts/ViewHearted drive the heart control on the single-photo
+	// page (kgu.23).
+	ViewHearts  int64
+	ViewHearted bool
 	// Sort is the gallery mode: "" (All, newest-first) or "top" (Most
 	// loved leaderboard). Drives the tab UI and disables infinite scroll
 	// for the top view.
@@ -191,12 +198,18 @@ func (s *Server) handlePhotoPage(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	_, name := s.ensureName(w, r)
+	id, name := s.ensureName(w, r)
+	hearts, hearted, err := s.st.PhotoHeartState(hash, id)
+	if err != nil {
+		s.log.Error("photo page heart state", "err", err)
+	}
 	s.renderPage(w, tplPhoto, pageData{
-		Active:   "gallery",
-		Name:     name,
-		ViewHash: meta.Hash,
-		ViewName: meta.DisplayName,
+		Active:      "gallery",
+		Name:        name,
+		ViewHash:    meta.Hash,
+		ViewName:    meta.DisplayName,
+		ViewHearts:  hearts,
+		ViewHearted: hearted,
 	})
 }
 
@@ -237,4 +250,10 @@ func (s *Server) handleViewerJS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	_, _ = w.Write(viewerJS)
+}
+
+func (s *Server) handleHeartJS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	_, _ = w.Write(heartJS)
 }

@@ -91,6 +91,7 @@ func New(addr string, d Deps) *Server {
 	mux.HandleFunc("GET /static/upload.js", s.handleUploadJS)
 	mux.HandleFunc("GET /static/gallery.js", s.handleGalleryJS)
 	mux.HandleFunc("GET /static/viewer.js", s.handleViewerJS)
+	mux.HandleFunc("GET /static/heart.js", s.handleHeartJS)
 	mux.HandleFunc("GET /api/uploads/mine", s.handleMyUploads)
 	mux.HandleFunc("GET /api/photos", s.handlePhotos)
 

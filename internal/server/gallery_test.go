@@ -125,3 +125,47 @@ func TestGalleryJSServed(t *testing.T) {
 		t.Error("gallery.js missing IO infinite-scroll against /api/photos")
 	}
 }
+
+func TestGalleryHeartsAndTopMode(t *testing.T) {
+	s := newTestServer(t) // gate off; sessions enabled
+	a := strings.Repeat("a", 64)
+	b := strings.Repeat("b", 64)
+	for _, h := range []string{a, b} {
+		if _, _, err := s.st.InsertPhoto(store.Photo{
+			ContentHash: h, MIME: "image/jpeg", UploadedAt: time.Now(),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.st.UpsertSession("voter", ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := s.st.ToggleHeart(b, "voter"); err != nil { // b: 1 heart
+		t.Fatal(err)
+	}
+
+	// All view: tabs, a heart form per photo, both photos listed.
+	all := get(t, s, "/gallery").Body.String()
+	for _, want := range []string{
+		`class="gallery-tabs"`,
+		`action="/photo/` + a + `/heart"`,
+		"Most loved",
+		`src="/static/heart.js"`,
+	} {
+		if !strings.Contains(all, want) {
+			t.Errorf("/gallery missing %q", want)
+		}
+	}
+	if !strings.Contains(all, a) || !strings.Contains(all, b) {
+		t.Error("/gallery should list both photos")
+	}
+
+	// Top view: only the hearted photo; the zero-heart one is excluded.
+	top := get(t, s, "/gallery?sort=top").Body.String()
+	if !strings.Contains(top, b) {
+		t.Error("/gallery?sort=top should include the hearted photo")
+	}
+	if strings.Contains(top, a) {
+		t.Error("/gallery?sort=top should exclude the zero-heart photo")
+	}
+}
