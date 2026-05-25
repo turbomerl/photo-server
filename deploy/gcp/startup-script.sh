@@ -116,10 +116,15 @@ Persistent=true
 WantedBy=timers.target
 TIMEREOF
 
-# 8) Enable + (re)start everything.
+# 8) Enable + (re)start everything. Use restart, not enable --now: this
+#    script re-runs on every boot, and on a reboot systemd has already
+#    started the (old) photo-server unit before we run — enable --now
+#    would be a no-op and the freshly-downloaded binary / rewritten env
+#    would never take effect. restart guarantees the new one is loaded.
 systemctl daemon-reload
-systemctl enable --now photo-server
-systemctl enable --now photo-server-backup.timer
+systemctl enable photo-server.service photo-server-backup.timer
+systemctl restart photo-server.service
+systemctl start photo-server-backup.timer
 systemctl reload caddy || systemctl restart caddy
 
 echo "[photo-server-init] complete at $(date -u)"
