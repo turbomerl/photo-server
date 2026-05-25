@@ -147,3 +147,11 @@ and drop `prevent_destroy` on `google_storage_bucket.backup`, then delete.
 - **DNS via Cloud DNS instead of a registrar:** add a
   `google_dns_record_set` against your managed zone; the static IP output
   is the rrdata.
+- **Cloudflare (or any proxied DNS):** the `photos` record must be
+  **"DNS only" (grey cloud)**, not proxied. A proxied record returns
+  Cloudflare's anycast IPs (`104.21.x` / `172.67.x`), so the name never
+  resolves to the static IP, Caddy can't complete its Let's Encrypt
+  challenge, and traffic never reaches the VM. Grey-cloud lets Caddy own
+  TLS directly. To keep the orange cloud you'd need a Cloudflare Origin
+  Certificate or Caddy's DNS-01 challenge (`caddy-dns/cloudflare` + an API
+  token) — more setup, and mind Cloudflare's request-body upload limit.
