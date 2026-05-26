@@ -85,6 +85,16 @@ func (s *Store) PhotoHeartState(hash, viewerSessionID string) (count int64, hear
 	return count, h != 0, nil
 }
 
+// LovedCount returns how many visible photos have at least one heart —
+// the counter on the "Most loved" gallery tab (kgu.23).
+func (s *Store) LovedCount() (int, error) {
+	var n int
+	err := s.db.QueryRow(
+		`SELECT COUNT(*) FROM photos WHERE hidden_at IS NULL AND heart_count > 0`,
+	).Scan(&n)
+	return n, err
+}
+
 // TopPhotos returns the most-hearted visible photos (the "Most loved"
 // leaderboard, kgu.23), hearts-desc then newest-first, capped at limit.
 // Photos with zero hearts are excluded. viewerSessionID flags which

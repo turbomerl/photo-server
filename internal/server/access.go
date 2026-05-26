@@ -115,34 +115,28 @@ const gateHTML = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f7ede5">
+<meta name="theme-color" content="#fdf3e2">
 <meta name="robots" content="noindex, nofollow">
 <title>Wedding photos · M&I</title>
+
 
 <style>
   /* Self-hosted fonts (served from /static/fonts/; exempt from the gate). */
   @font-face{font-family:'Pinyon Script';font-style:normal;font-weight:400;font-display:swap;src:url(/static/fonts/pinyon-script.woff2) format('woff2')}
   @font-face{font-family:'Libre Baskerville';font-style:normal;font-weight:400 700;font-display:swap;src:url(/static/fonts/libre-baskerville.woff2) format('woff2')}
   @font-face{font-family:'Libre Baskerville';font-style:italic;font-weight:400;font-display:swap;src:url(/static/fonts/libre-baskerville-italic.woff2) format('woff2')}
-  @font-face{font-family:'Caveat';font-style:normal;font-weight:400 600;font-display:swap;src:url(/static/fonts/caveat.woff2) format('woff2')}
-  @font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:400 500;font-display:swap;src:url(/static/fonts/jetbrains-mono.woff2) format('woff2')}
-  @font-face{font-family:'Inter';font-style:normal;font-weight:400 800;font-display:swap;src:url(/static/fonts/inter.woff2) format('woff2')}
 
-  /* ── Tokens (Blush palette — same as app.css) ─────────────── */
   :root {
-    --paper: #f7ede5; --paper-alt: #f1e2d6; --paper-card: #fbfaf6;
-    --ink: #1a1816; --ink-soft: #5a5147; --line: #dccbbc;
-    --accent: #e7a8a8; --accent-dk: #b8636e; --stamp: #c4452f;
+    --paper: #fdf3e2; --paper-alt: #f6e4c8; --paper-card: #fefdf6;
+    --ink: #2a1c12; --ink-soft: #6a4a32; --line: #e8d5b2;
+    --accent: #e8631d; --accent-dk: #b34614; --stamp: #d63f2c;
     --f-script: "Pinyon Script", "Snell Roundhand", cursive;
     --f-serif:  "Libre Baskerville", Baskerville, serif;
-    --f-sans:   "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --f-mono:   "JetBrains Mono", ui-monospace, Menlo, monospace;
-    --f-hand:   "Caveat", cursive;
     --grain: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { background: var(--paper); color: var(--ink);
-    font: 15px/1.45 var(--f-sans); -webkit-font-smoothing: antialiased; }
+    font: 15px/1.45 var(--f-serif); -webkit-font-smoothing: antialiased; }
   body { min-height: 100vh; background-image: var(--grain);
          display: flex; flex-direction: column; align-items: center; }
 
@@ -150,7 +144,7 @@ const gateHTML = `<!doctype html>
     width: 100%; max-width: 480px;
     padding: calc(14px + env(safe-area-inset-top,0)) 18px 0;
     display: flex; justify-content: space-between;
-    font: 9px var(--f-mono); color: var(--ink-soft);
+    font: 700 9px var(--f-serif); color: var(--ink-soft);
     letter-spacing: 1.5px; text-transform: uppercase;
   }
   main {
@@ -178,21 +172,20 @@ const gateHTML = `<!doctype html>
   .err { font: italic 13px var(--f-serif); color: var(--stamp);
     margin-top: 14px; }
 
-  /* Polaroid-style password card */
   .gate-form { position: relative; margin-top: 28px; width: 100%; max-width: 300px; }
   .pw-label-tag {
     position: absolute; top: -12px; left: 50%;
     transform: translateX(-50%) rotate(-2deg);
     background: var(--stamp); color: #fefdf8;
     padding: 3px 12px;
-    font: 800 10px var(--f-sans); letter-spacing: 2px;
+    font: 700 10px var(--f-serif); letter-spacing: 3px;
     text-transform: uppercase;
     box-shadow: 0 2px 4px rgba(0,0,0,0.15);
     z-index: 2;
   }
   .pw-card {
-    background: #fefdf8;
-    padding: 22px 18px 16px;
+    background: #fefdf6;
+    padding: 22px 18px 18px;
     box-shadow: 0 10px 22px -8px rgba(40,30,20,0.32), 0 1px 2px rgba(40,30,20,0.18);
     outline: 1px solid var(--line);
     text-align: left;
@@ -203,22 +196,18 @@ const gateHTML = `<!doctype html>
   }
   .pw-row input {
     flex: 1; min-width: 0;
-    font: 18px var(--f-mono); color: var(--ink);
-    letter-spacing: 4px; background: transparent; border: 0; outline: 0;
+    font: 18px var(--f-serif); color: var(--ink);
+    letter-spacing: 3px; background: transparent; border: 0; outline: 0;
     padding: 4px 0;
   }
-  .pw-row input::placeholder { color: var(--ink-soft); opacity: 0.4; letter-spacing: 0; font-size: 15px; }
+  .pw-row input::placeholder { color: var(--ink-soft); opacity: 0.4;
+    letter-spacing: 0; font-style: italic; font-size: 15px; }
   .pw-eye {
     background: transparent; border: 0; padding: 4px; cursor: pointer;
     color: var(--ink-soft); display: flex;
   }
   .pw-eye svg { width: 18px; height: 18px; stroke: currentColor; fill: none;
     stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-  .pw-meta {
-    margin-top: 10px; display: flex; justify-content: space-between;
-    font: 8px var(--f-mono); color: var(--ink-soft);
-    letter-spacing: 1.5px; text-transform: uppercase;
-  }
 
   .submit {
     margin-top: 24px; padding: 14px 36px;
@@ -230,17 +219,13 @@ const gateHTML = `<!doctype html>
   }
   .submit::before {
     content: ""; width: 10px; height: 10px; border-radius: 50%;
-    background: var(--accent); box-shadow: 0 0 8px rgba(231,168,168,0.6);
+    background: var(--accent); box-shadow: 0 0 8px rgba(232,99,29,0.6);
   }
   .submit:active { transform: translateY(1px); }
 
-  .or { margin-top: 22px; display: flex; align-items: center; gap: 12px;
-    color: var(--ink-soft); font: italic 12px var(--f-serif); }
-  .or::before, .or::after { content: ""; width: 22px; height: 1px; background: var(--line); }
   .hint {
     margin-top: 28px;
-    font: 17px var(--f-hand); color: var(--ink-soft);
-    transform: rotate(-1.5deg);
+    font: italic 15px var(--f-serif); color: var(--ink-soft);
   }
   .hint b { font-weight: normal; color: var(--accent-dk);
     text-decoration: underline; text-decoration-style: dotted; }
@@ -248,8 +233,8 @@ const gateHTML = `<!doctype html>
 </head>
 <body>
   <div class="stamp-bar">
-    <span>'26 · 05 · 30</span>
-    <span>Mill Hide · Herts</span>
+    <span>17·04·26</span>
+    <span>Mariam &amp; Isambard</span>
   </div>
 
   <main>
@@ -277,14 +262,11 @@ const gateHTML = `<!doctype html>
                  placeholder="From your invitation card">
           <button type="button" class="pw-eye" id="pw-eye"
                   aria-label="Show password" aria-pressed="false">
-            <svg id="pw-eye-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
               <circle cx="12" cy="12" r="3"/>
             </svg>
           </button>
-        </div>
-        <div class="pw-meta">
-          <span>Case sensitive</span>
         </div>
       </div>
       <button type="submit" class="submit">Come on in</button>
@@ -297,13 +279,11 @@ const gateHTML = `<!doctype html>
     (function () {
       var pw = document.getElementById('pw');
       var eye = document.getElementById('pw-eye');
-      if (eye && pw) {
-        eye.addEventListener('click', function () {
-          var showing = pw.type === 'text';
-          pw.type = showing ? 'password' : 'text';
-          eye.setAttribute('aria-pressed', showing ? 'false' : 'true');
-        });
-      }
+      if (eye && pw) eye.addEventListener('click', function () {
+        var showing = pw.type === 'text';
+        pw.type = showing ? 'password' : 'text';
+        eye.setAttribute('aria-pressed', showing ? 'false' : 'true');
+      });
     })();
   </script>
 </body>

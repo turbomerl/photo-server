@@ -171,7 +171,7 @@ func TestSelfHostedFontsBypassGate(t *testing.T) {
 
 	// The gate page is served to unauthed guests and uses the fonts, so
 	// /static/fonts/ must be reachable without the access cookie.
-	rec := accessGet(t, s, "/static/fonts/inter.woff2")
+	rec := accessGet(t, s, "/static/fonts/pinyon-script.woff2")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("font behind gate = %d, want 200 (exempt)", rec.Code)
 	}
