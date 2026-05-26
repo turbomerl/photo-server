@@ -68,7 +68,7 @@ button { font: inherit; cursor: pointer; }
   background: var(--paper);
   background-image: var(--grain);
   border-bottom: 1px solid var(--line);
-  padding: calc(14px + var(--safe-t)) 18px 8px;
+  padding: calc(14px + var(--safe-t)) 18px 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -98,7 +98,7 @@ button { font: inherit; cursor: pointer; }
 .name-tag-wrap {
   display: flex;
   justify-content: center;
-  padding: 10px 16px 8px;
+  padding: 16px 16px 16px;
 }
 .name-tag {
   position: relative;
@@ -192,12 +192,12 @@ button { font: inherit; cursor: pointer; }
 }
 
 /* ── Polaroid (camera) page ────────────────────────────────────── */
-.polaroid-page { padding-top: 2px; }
+.polaroid-page { padding-top: 10px; }
 
 .hero-stack {
   position: relative;
   height: 192px;
-  margin: 2px auto 0;
+  margin: 10px auto 8px;
   max-width: 360px;
 }
 .hero-poly {
@@ -357,7 +357,7 @@ button { font: inherit; cursor: pointer; }
   text-align: center;
   font: italic 12px/1.3 var(--f-serif);
   color: var(--ink-soft);
-  margin: 10px auto 0;
+  margin: 22px auto 0;
   max-width: 280px;
 }
 
@@ -367,10 +367,10 @@ button { font: inherit; cursor: pointer; }
 .shutter-form { display: contents; }
 
 /* Developing strip (kgu.15 — JS appends .shot tiles) */
-.strip-section { margin-top: 14px; }
+.strip-section { margin-top: 30px; }
 .strip-section .strip-head {
   display: flex; align-items: center; gap: 10px;
-  margin-bottom: 4px; padding: 0 2px;
+  margin-bottom: 10px; padding: 0 2px;
 }
 .strip-section .strip-head::before,
 .strip-section .strip-head::after {
@@ -596,10 +596,10 @@ button { font: inherit; cursor: pointer; }
 .sentinel { height: 1px; }
 
 /* ── Gallery page ──────────────────────────────────────────────── */
-.gallery-page { padding-top: 4px; }
+.gallery-page { padding-top: 12px; }
 .gal-head {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; padding: 4px 0 8px;
+  gap: 10px; padding: 8px 0 18px;
   flex-wrap: wrap;
 }
 .gal-head .title-row {
@@ -821,6 +821,16 @@ body.admin { padding: 16px; padding-bottom: 28px; }
 }
 .adm-acts .adm-danger { color: var(--danger); border-color: var(--danger); }
 .adm-empty { color: var(--ink-soft); padding: 14px 0; font-style: italic; }
+
+/* Phones: thumb + info on top, action buttons full-width below (bigger
+   tap targets; nothing squished off-screen). */
+@media (max-width: 599px) {
+  .adm-row { grid-template-columns: 56px 1fr; column-gap: 10px; row-gap: 8px; }
+  .adm-thumb { width: 56px; height: 56px; }
+  .adm-acts { grid-column: 1 / -1; }
+  .adm-acts form, .adm-acts button { flex: 1; }
+  .adm-acts button { width: 100%; padding: 9px 11px; }
+}
 
 /* ── Larger viewports: keep mobile width, centre the column ─────── */
 @media (min-width: 600px) {

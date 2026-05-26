@@ -153,26 +153,26 @@ const gateHTML = `<!doctype html>
     display: flex; flex-direction: column; align-items: center;
     text-align: center;
   }
-  .lockup { margin: 38px 0 6px;
+  .lockup { margin: 56px 0 6px;
     display: flex; align-items: baseline; gap: 14px; line-height: 1; }
   .lockup .m, .lockup .i { font: 92px/0.85 var(--f-script); color: var(--ink); }
   .lockup .amp { font: italic 28px var(--f-serif); color: var(--ink-soft); }
 
   .divider { display: flex; align-items: center; gap: 10px;
-    margin-top: 18px; width: 70%; }
+    margin-top: 32px; width: 70%; }
   .divider .line { flex: 1; height: 1px; background: var(--line); }
   .divider .label {
     font: italic 12px var(--f-serif); color: var(--ink-soft);
     letter-spacing: 1px; text-transform: uppercase;
   }
   .welcome { font: 15px/1.45 var(--f-serif); color: var(--ink);
-    margin-top: 22px; max-width: 280px; }
+    margin-top: 32px; max-width: 280px; }
   .welcome em { display: block; font: italic 13px var(--f-serif);
-    color: var(--ink-soft); margin-top: 4px; }
+    color: var(--ink-soft); margin-top: 8px; }
   .err { font: italic 13px var(--f-serif); color: var(--stamp);
     margin-top: 14px; }
 
-  .gate-form { position: relative; margin-top: 28px; width: 100%; max-width: 300px; }
+  .gate-form { position: relative; margin-top: 44px; width: 100%; max-width: 300px; }
   .pw-label-tag {
     position: absolute; top: -12px; left: 50%;
     transform: translateX(-50%) rotate(-2deg);
@@ -210,7 +210,7 @@ const gateHTML = `<!doctype html>
     stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
   .submit {
-    margin-top: 24px; padding: 14px 36px;
+    margin-top: 36px; padding: 14px 36px;
     background: var(--ink); color: var(--paper);
     border: 0;
     font: 700 16px var(--f-serif); letter-spacing: 0.5px;
@@ -224,7 +224,7 @@ const gateHTML = `<!doctype html>
   .submit:active { transform: translateY(1px); }
 
   .hint {
-    margin-top: 28px;
+    margin-top: 44px;
     font: italic 15px var(--f-serif); color: var(--ink-soft);
   }
   .hint b { font-weight: normal; color: var(--accent-dk);

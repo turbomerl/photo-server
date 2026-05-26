@@ -166,6 +166,24 @@ func TestNoindexHeader(t *testing.T) {
 	}
 }
 
+func TestAdminAuthGrantsAccessCookie(t *testing.T) {
+	s := accessServer(t, "letmein") // gate ON; accessServer sets AdminPassword "pw"
+
+	// A valid admin login also issues the event-access cookie, so the admin
+	// page's CSS + thumbnails (gated /static, /thumb) load on any browser.
+	rec := doAdmin(t, s, http.MethodGet, "/admin", "pw")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("admin auth = %d, want 200", rec.Code)
+	}
+	if c := accessCookieOf(rec); c == nil || c.Value != accessCookieValue("letmein") {
+		t.Error("admin auth should set the ps_access cookie")
+	}
+	// A failed admin login must NOT hand out the cookie.
+	if c := accessCookieOf(doAdmin(t, s, http.MethodGet, "/admin", "")); c != nil {
+		t.Error("unauthenticated /admin must not set the access cookie")
+	}
+}
+
 func TestSelfHostedFontsBypassGate(t *testing.T) {
 	s := accessServer(t, "letmein") // gate ON
 

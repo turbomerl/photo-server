@@ -58,6 +58,14 @@ func (s *Server) requireAdmin(w http.ResponseWriter, r *http.Request) bool {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return false
 	}
+	// An authenticated admin is more privileged than a guest, so also grant
+	// the event-access cookie. Without it, the admin page's own CSS
+	// (/static/app.css) and thumbnails (/thumb/…) come back as the gate page
+	// on a browser that never entered the gate (e.g. opening /admin straight
+	// on a phone) — leaving an unstyled page with broken images.
+	if s.accessPassword != "" {
+		s.setAccessCookie(w)
+	}
 	return true
 }
 
