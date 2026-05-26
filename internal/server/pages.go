@@ -32,6 +32,9 @@ var viewerJS []byte
 //go:embed assets/heart.js
 var heartJS []byte
 
+//go:embed assets/resize.js
+var resizeJS []byte
+
 //go:embed assets/img/*.jpeg
 var imgFS embed.FS
 
@@ -263,6 +266,12 @@ func (s *Server) handleHeartJS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	_, _ = w.Write(heartJS)
+}
+
+func (s *Server) handleResizeJS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	_, _ = w.Write(resizeJS)
 }
 
 // handleImg serves embedded hero/static images from /static/img/{name}.

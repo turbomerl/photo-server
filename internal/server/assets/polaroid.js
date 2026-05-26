@@ -9,6 +9,9 @@
   var strip = document.getElementById("ps-strip");
   if (!input || !strip) return;
 
+  // jz9: downscale before upload; passthrough if resize.js didn't load.
+  var resize = window.psResize || function (f) { return Promise.resolve(f); };
+
   // The shared display-name field is wired by session.js.
 
   // --- one captured frame -> a "developing" tile -> /upload ---------
@@ -29,8 +32,9 @@
   }
 
   function send(file, tile) {
+    resize(file).then(function (blob) {
     var fd = new FormData();
-    fd.append("file", file, file.name || "photo.jpg");
+    fd.append("file", blob, file.name || "photo.jpg");
     fetch("/upload", {
       method: "POST",
       body: fd,
@@ -68,6 +72,7 @@
           send(file, tile);
         };
       });
+    });
   }
 
   input.addEventListener("change", function () {

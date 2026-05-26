@@ -22,6 +22,10 @@
   var MAX_CONCURRENT = 3;
   var MAX_RETRIES = 4;
 
+  // jz9: downscale large photos in the browser before upload; passthrough
+  // if resize.js didn't load.
+  var resize = window.psResize || function (f) { return Promise.resolve(f); };
+
   function doneSet() {
     try { return JSON.parse(localStorage.getItem(DONE_KEY) || "{}"); }
     catch (e) { return {}; }
@@ -97,47 +101,51 @@
 
   function send(item) {
     active++;
-    item.row.state.textContent = "uploading…";
+    item.row.state.textContent = "preparing…";
     item.row.el.className = "qrow";
 
-    var fd = new FormData();
-    fd.append("file", item.file, item.file.name || "photo.jpg");
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", "/upload");
-    xhr.withCredentials = true;
+    resize(item.file).then(function (blob) {
+      item.row.state.textContent = "uploading…";
 
-    xhr.upload.onprogress = function (e) {
-      if (e.lengthComputable) {
-        item.row.bar.style.width = Math.round((e.loaded / e.total) * 100) + "%";
-      }
-    };
-    xhr.onload = function () {
-      active--;
-      var ok = false, u = null;
-      try {
-        var j = JSON.parse(xhr.responseText);
-        u = j && j.uploaded && j.uploaded[0];
-        ok = xhr.status >= 200 && xhr.status < 300 && u && u.ok;
-      } catch (e) { /* ok stays false */ }
-      if (ok) {
-        markDone(item.sig);
-        item.row.bar.style.width = "100%";
-        item.row.state.textContent = u.deduped ? "already shared ✓" : "shared ✓";
-        item.row.el.className = "qrow done";
-        if (u.thumb_url) addRecentTile(u.thumb_url, u.hash);
-        setTimeout(function () {
-          if (item.row.el.parentNode) item.row.el.parentNode.removeChild(item.row.el);
-        }, 2500);
-      } else if (xhr.status === 415) {
-        item.row.state.textContent = "not an image";
-        item.row.el.className = "qrow failed";
-      } else {
-        retry(item);
-      }
-      pump();
-    };
-    xhr.onerror = function () { active--; retry(item); pump(); };
-    xhr.send(fd);
+      var fd = new FormData();
+      fd.append("file", blob, item.file.name || "photo.jpg");
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", "/upload");
+      xhr.withCredentials = true;
+
+      xhr.upload.onprogress = function (e) {
+        if (e.lengthComputable) {
+          item.row.bar.style.width = Math.round((e.loaded / e.total) * 100) + "%";
+        }
+      };
+      xhr.onload = function () {
+        active--;
+        var ok = false, u = null;
+        try {
+          var j = JSON.parse(xhr.responseText);
+          u = j && j.uploaded && j.uploaded[0];
+          ok = xhr.status >= 200 && xhr.status < 300 && u && u.ok;
+        } catch (e) { /* ok stays false */ }
+        if (ok) {
+          markDone(item.sig);
+          item.row.bar.style.width = "100%";
+          item.row.state.textContent = u.deduped ? "already shared ✓" : "shared ✓";
+          item.row.el.className = "qrow done";
+          if (u.thumb_url) addRecentTile(u.thumb_url, u.hash);
+          setTimeout(function () {
+            if (item.row.el.parentNode) item.row.el.parentNode.removeChild(item.row.el);
+          }, 2500);
+        } else if (xhr.status === 415) {
+          item.row.state.textContent = "not an image";
+          item.row.el.className = "qrow failed";
+        } else {
+          retry(item);
+        }
+        pump();
+      };
+      xhr.onerror = function () { active--; retry(item); pump(); };
+      xhr.send(fd);
+    });
   }
 
   function retry(item) {
