@@ -24,6 +24,34 @@ rehearsal at the actual venue is acceptable (and expected).
 
 ---
 
+## 0. Current architecture (cloud — as built, 2026-05)
+
+Sections §1 onward describe the original **offline LAN appliance**, kept
+for rationale and history. What actually shipped is **cloud-hosted** — see
+`docs/CLOUD_HANDOVER.md` for the full handover. In brief:
+
+- **Hosting:** one Compute Engine VM (Ubuntu) + persistent disk + static
+  IP, with **Caddy** terminating HTTPS (Let's Encrypt) and reverse-proxying
+  to the Go binary on localhost. Provisioned by Terraform (`deploy/gcp/`).
+  Originals + SQLite live on the disk; an hourly job backs them up to GCS.
+- **Access:** guests reach a public HTTPS URL over **their own cellular**
+  (~10 Mbps at the venue) and scan **one QR** carrying a shared **event
+  password** (`?k=…`); the gate sets a cookie and lets them in. No Wi-Fi to
+  join, no captive portal, no accounts.
+- **Dropped from the LAN design:** own AP, dnsmasq/DHCP, NAT/uplink,
+  captive portal, the Wi-Fi-join QR, and the "fully offline / unattended on
+  battery" goals (**G3–G6** below).
+- **Still true:** account-less trusted-guest model; **no third-party
+  fetches from the app** (self-hosted fonts/assets, no CDNs/telemetry);
+  HEIC→JPEG + thumbnails; sha256 dedup; the whole upload/gallery/admin UX.
+- **Added for cloud:** event-password access gate + auto-login QR, `Secure`
+  cookies, client-side image downscale before upload, anonymous hearts +
+  a "Most loved" view, GCS backup.
+
+Cloud backlog + decisions live in beads under epic `photo_server-aa4`.
+
+---
+
 ## 1. Summary
 
 A small, self-contained server appliance that lets a group of people in a

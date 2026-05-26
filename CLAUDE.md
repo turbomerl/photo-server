@@ -52,83 +52,95 @@ bd close <id>         # Complete work
 
 ## Project Overview
 
-**photo-server** is a self-contained local server that lets people on a LAN
-upload, browse, and download photos in environments with no internet or
-existing wifi. The server creates its own access point; clients connect to it
-directly from their phones or laptops.
+**photo-server** is a single Go binary that lets wedding guests upload,
+browse, download, and "heart" photos from their phones over a public
+HTTPS URL. It runs **cloud-hosted** (one small VM); guests reach it over
+their own cellular — no app to install, no account to create. A shared
+**event password** (baked into a QR) gates the album.
 
-The product requirements live in `docs/PRD.md`. Read it before making
-non-trivial changes — the offline-first constraint affects nearly every
-design decision (no cloud auth, no CDNs, no third-party fonts, no telemetry).
+> **History:** this began as an offline **LAN appliance** (its own Wi-Fi
+> AP, dnsmasq, captive portal, a Dell mini-PC). It **pivoted to cloud on
+> 2026-05-25** because the venue has ~10 Mbps cellular — the networking
+> layer was dropped and the application layer carried over unchanged.
+> `docs/CLOUD_HANDOVER.md` records the pivot. In `docs/PRD.md` the
+> offline/networking requirements are historical; the rest still holds.
 
-## Status
+Target: the owner's wedding — one-off, single day, ≤150 guests,
+trusted-guest model (no moderation/quotas/accounts; uploads encouraged).
 
-> **⚠️ PIVOTED TO CLOUD (2026-05-25).** The local-LAN appliance below is
-> superseded — the venue has ~10 Mbps cellular, so we're building a
-> **cloud-hosted** app guests reach over a public HTTPS URL. The AP /
-> dnsmasq / NAT / captive-portal / offline-first material in this file and
-> the PRD is now history (kept for reference + git revert). Start from
-> **`docs/CLOUD_HANDOVER.md`**, then `bd ready` (cloud backlog:
-> `photo_server-rrh/9wv/ycl/gj4/3rz/apt/jz9`).
+## Status — live in production
 
-The original LAN-appliance design (mostly settled, now superseded):
+Deployed and verified behind Caddy auto-HTTPS on a GCE VM. Shipped:
+upload (multipart, sha256 dedup, EXIF, libvips HEIC→JPEG via an async
+worker pool) · **client-side downscale before upload** (2048px/q0.82) ·
+gallery (reverse-chrono + lazy thumbs) + full-size viewer · **anonymous
+hearts + a "Most loved" leaderboard** · admin (hide/delete/shutdown +
+print-QR) · **event access gate + single auto-login QR** · guest sessions
+(cookie + localStorage) · hourly **GCS backup** of originals + DB ·
+wedding-theme UI with **self-hosted fonts**.
 
-- **Target hardware:** existing Dell mini-PC running Ubuntu (server) +
-  Ubiquiti UAP-AC-LR (single AP, marquee, PoE-powered via bundled
-  passive 24 V injector).
-- **Stack:** single Go binary under `systemd`, SQLite for metadata,
-  `libvips` for HEIC/thumbnailing, `dnsmasq` for DHCP/DNS, `nodogsplash`
-  (or equivalent) for the captive portal.
-- **Development is happening directly on the Dell** — see
-  `docs/DEV_HANDOFF.md` for setup. Building on the same kernel / glibc /
-  ext4 as the target removes a class of bugs, and the networking pieces
-  can only be exercised on the box anyway.
-
-See `docs/PRD.md` for full rationale and any decisions still open.
+Remaining work is in `bd ready` (e.g. `ycl` gate rate-limiting, `kgu.25`
+on-site rehearsal, `kgu.26` day-of cards/runbook).
 
 ## Build & Test
 
-Single Go binary, **stdlib only** (offline-first: no third-party
-modules in the skeleton). Requires Go — see `docs/DEV_HANDOFF.md` §5.1.
-`go` is at `/usr/local/go/bin`; if it is not on `PATH` yet, either
-`source ~/.bashrc` or call `/usr/local/go/bin/go`.
+Single Go binary; **stdlib + two pure-Go deps** (`modernc.org/sqlite`,
+`github.com/skip2/go-qrcode`). `libvips` (`vipsthumbnail`) is shelled out
+for HEIC, never linked, so the binary stays a portable single artifact.
+Go 1.26+ (toolchain pinned in `go.mod`); on the dev laptop `go` lives at
+`~/sdk/go/bin` (official go.dev archive).
 
 ```bash
-make build     # -> ./photo-server (single binary)
-make test      # go test ./...
-make vet       # go vet ./...
-make check     # vet + test (pre-commit quality gate)
-make run       # build + run locally; data dir ./data, http :8080
+make build        # -> ./photo-server (host binary)
+make build-linux  # -> ./photo-server-linux-amd64 (static linux/amd64, for the VM)
+make test         # go test ./...
+make vet
+make check        # vet + test (pre-commit gate)
+make run          # local: http://localhost:8080, data dir ./data
 ```
 
 Health check: `curl -fsS http://127.0.0.1:8080/healthz` → `{"status":"ok",...}`.
 
 Layout:
 
-- `cmd/photo-server/` — entrypoint: config load, logger, signal-driven
-  graceful shutdown.
-- `internal/config/` — environment-only config (`PHOTO_SERVER_*`),
-  honours systemd `$STATE_DIRECTORY`.
-- `internal/server/` — HTTP server, routing, `/healthz`. Feature
-  handlers (upload/gallery/admin/slideshow) attach here in later work.
-- `deploy/photo-server.service` — hardened systemd unit
-  (`Restart=on-failure`, `ProtectSystem=strict`, `StateDirectory=`).
+- `cmd/photo-server/` — entrypoint: config, logger, graceful shutdown.
+- `internal/config/` — env-only config (`PHOTO_SERVER_*`), honours systemd
+  `$STATE_DIRECTORY`. Key vars: `BASE_URL` (https in prod), `ADMIN_PASSWORD`,
+  `ACCESS_PASSWORD` (event gate), `DATA_DIR`.
+- `internal/server/` — HTTP routing, pages, API, upload, gallery, admin,
+  the access gate (`access.go`), and hearts. CSS/JS/templates/fonts/images
+  are embedded via `//go:embed`.
+- `internal/store/` — SQLite (schema + numbered migrations);
+  `internal/blobstore/` — content-addressed originals/thumbs/gallery JPEGs.
+- `deploy/photo-server.service` — hardened systemd unit.
+- `deploy/gcp/` — **Terraform** for the cloud deploy (VM + persistent disk
+  + Caddy + GCS); runbook in `deploy/gcp/README.md`.
 
-Run on the device under systemd; logs go to journald
-(`journalctl -u photo-server -f`). `libvips` is only needed from
-`kgu.12` (HEIC→JPEG) onward, not for the skeleton.
+## Architecture (cloud, as built)
 
-## Architecture Overview
-
-See `docs/PRD.md` for the current product spec. Architecture decisions
-(hardware choice, OS, web framework, storage layout) will be tracked as
-beads issues and summarised here once settled.
+- **Host:** Compute Engine VM (Ubuntu) + persistent disk (holds SQLite +
+  the blob store) + a reserved static IP. **Caddy** terminates HTTPS
+  (Let's Encrypt) and reverse-proxies to the app on localhost:8080.
+  Provisioned by the Terraform in `deploy/gcp/`; event-window lifecycle
+  (provision → event → `terraform destroy`, with the backup bucket
+  retained).
+- **Entry / auth:** one QR → `https://<domain>/?k=<event-password>` → the
+  gate validates the key, sets an HttpOnly cookie, and strips the key.
+  Account-less; the password is the event-level gate (PRD N11 threat
+  model). No Wi-Fi join, no captive portal.
+- **Storage / durability:** content-addressed blob store + SQLite on the
+  mounted disk; an hourly systemd timer backs up `originals/` + a SQLite
+  snapshot to a versioned GCS bucket.
 
 ## Conventions & Patterns
 
-- Track all work in beads (`bd`), not in markdown TODOs.
-- Anything that ships on the device must run fully offline. Reject
-  dependencies that phone home, fetch fonts/CSS from CDNs, or require
-  account sign-in to function.
-- Prefer boring, well-supported tech that survives unattended operation
-  on modest ARM hardware.
+- Track all work in beads (`bd`), not markdown TODOs.
+- **The app makes no third-party fetches.** Fonts, CSS, and JS are
+  self-hosted/embedded — no CDNs, no web fonts, no telemetry, no
+  third-party auth. (Guests use their own connectivity to *reach* the app;
+  the app itself pulls nothing external.) This is the surviving core of the
+  original offline-first ethos.
+- Keep the dependency set tiny and pure-Go so the binary stays one static
+  artifact; `libvips` is the only external tool, and it's shelled out.
+- Prefer boring, well-supported tech; the app must survive an unattended
+  all-day event on a single modest VM.
