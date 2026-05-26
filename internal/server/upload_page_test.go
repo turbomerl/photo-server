@@ -24,8 +24,8 @@ func TestUploadPagePickerNotCamera(t *testing.T) {
 	s := newTestServer(t)
 	b := get(t, s, "/upload").Body.String()
 
-	if !strings.Contains(b, "<title>Upload") {
-		t.Error("/upload is not the Upload page")
+	if !strings.Contains(b, "<title>Drop") {
+		t.Error("/upload is not the Upload (Drop) page")
 	}
 	if !strings.Contains(b, `id="up-input"`) || !strings.Contains(b, "multiple") {
 		t.Error("upload picker missing multi-select <input>")
@@ -38,7 +38,7 @@ func TestUploadPagePickerNotCamera(t *testing.T) {
 	if !strings.Contains(b, `src="/static/upload.js"`) {
 		t.Error("upload page does not include upload.js")
 	}
-	if !strings.Contains(b, "Your recent uploads") {
+	if !strings.Contains(b, "Your contributions") {
 		t.Error("upload page missing the recent-uploads section")
 	}
 }

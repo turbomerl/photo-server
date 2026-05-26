@@ -50,8 +50,8 @@ func TestPagesRenderWithThreeTabNav(t *testing.T) {
 func TestIndexIsPolaroidWithCaptureInput(t *testing.T) {
 	s := newTestServer(t)
 	b := get(t, s, "/").Body.String()
-	if !strings.Contains(b, "<title>Polaroid") {
-		t.Error("/ is not the Polaroid page")
+	if !strings.Contains(b, "<title>Snap") {
+		t.Error("/ is not the Polaroid (Snap) page")
 	}
 	if !strings.Contains(b, `id="ps-shot"`) || !strings.Contains(b, "capture=") {
 		t.Error("Polaroid page missing the <input capture> shutter")
@@ -84,9 +84,14 @@ func TestStaticAssets(t *testing.T) {
 		!strings.HasPrefix(css.Header().Get("Content-Type"), "text/css") {
 		t.Fatalf("app.css: code=%d ct=%q", css.Code, css.Header().Get("Content-Type"))
 	}
-	if strings.Contains(css.Body.String(), "http://") ||
-		strings.Contains(css.Body.String(), "https://") {
-		t.Error("app.css references an external URL (must be offline)")
+	// Offline-first (PRD N1): no external fetches. Fonts are self-hosted
+	// (url(/static/fonts/…)); the only "http" left is the SVG namespace
+	// inside the grain data-URI, which is never fetched.
+	cb := css.Body.String()
+	for _, ext := range []string{"googleapis", "gstatic", "url(http", `url("http`, `url('http`} {
+		if strings.Contains(cb, ext) {
+			t.Errorf("app.css references external resource %q (must be offline)", ext)
+		}
 	}
 
 	js := get(t, s, "/static/polaroid.js")

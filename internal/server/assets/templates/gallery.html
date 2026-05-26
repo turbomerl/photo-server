@@ -1,11 +1,29 @@
-{{define "title"}}Gallery · Wedding photos{{end}}
+{{define "title"}}Roll · Wedding photos · M&I{{end}}
 {{define "main"}}
-<section class="gallery">
+<section class="gallery-page">
+
+  <div class="gal-head">
+    <div>
+      <div class="title">The roll so far</div>
+      <div class="sub">everyone's photos · scroll for more</div>
+    </div>
+    <div class="gal-counter">
+      <div class="n">{{len .Photos}}</div>
+      <div class="lbl">FRAMES</div>
+    </div>
+  </div>
+
   <nav class="gallery-tabs" aria-label="Gallery view">
     <a href="/gallery"{{if ne .Sort "top"}} class="active" aria-current="page"{{end}}>All</a>
     <a href="/gallery?sort=top"{{if eq .Sort "top"}} class="active" aria-current="page"{{end}}>♥ Most loved</a>
   </nav>
-  <ul id="gal-grid" class="grid">
+
+  <div class="gal-divider">
+    <span class="today">{{if eq .Sort "top"}}most loved{{else}}today{{end}}</span>
+    <span class="date">'26·05·30</span>
+  </div>
+
+  <ul id="gal-grid" class="gal-grid">
     {{range .Photos}}
     <li class="cell">
       <a href="/p/{{.Hash}}" data-name="{{.DisplayName}}"><img loading="lazy" src="/thumb/{{.Hash}}" alt=""></a>
@@ -17,10 +35,13 @@
     </li>
     {{else}}
     <li class="empty" id="gal-empty">{{if eq .Sort "top"}}No hearts yet — tap the ♥ on photos you love.{{else}}No photos yet — be the first to
-    share from <a href="/">Polaroid</a> or <a href="/upload">Upload</a>.{{end}}</li>
+    share from <a href="/">Snap</a> or <a href="/upload">Drop</a>.{{end}}</li>
     {{end}}
   </ul>
   <div id="gal-sentinel" class="sentinel" data-next-before="{{.NextBefore}}"></div>
+
+  <div class="gal-end">{{if eq .Sort "top"}}♥ the ones you love{{else}}keep them coming →{{end}}</div>
+
 </section>
 {{end}}
 {{define "scripts"}}<script src="/static/gallery.js" defer></script>

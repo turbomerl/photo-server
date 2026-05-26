@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/turbomerl/photo-server/internal/store"
 )
@@ -30,6 +31,12 @@ var viewerJS []byte
 
 //go:embed assets/heart.js
 var heartJS []byte
+
+//go:embed assets/img/*.jpeg
+var imgFS embed.FS
+
+//go:embed assets/fonts/*.woff2
+var fontsFS embed.FS
 
 // One template set per page: base.html provides the shell + bottom
 // nav; the page file overrides the title/main/scripts blocks.
@@ -256,4 +263,43 @@ func (s *Server) handleHeartJS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	_, _ = w.Write(heartJS)
+}
+
+// handleImg serves embedded hero/static images from /static/img/{name}.
+// Only files baked into assets/img/ are reachable — nothing on disk.
+func (s *Server) handleImg(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	// Reject path separators — defense in depth; the mux {name} pattern
+	// already disallows slashes.
+	if name == "" || strings.ContainsAny(name, `/\`) {
+		http.NotFound(w, r)
+		return
+	}
+	b, err := imgFS.ReadFile("assets/img/" + name)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "image/jpeg")
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	_, _ = w.Write(b)
+}
+
+// handleFont serves embedded self-hosted woff2 fonts from
+// /static/fonts/{name}. This route is exempt from the access gate so the
+// gate page itself can use the fonts (see requireAccess).
+func (s *Server) handleFont(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if name == "" || strings.ContainsAny(name, `/\`) {
+		http.NotFound(w, r)
+		return
+	}
+	b, err := fontsFS.ReadFile("assets/fonts/" + name)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "font/woff2")
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	_, _ = w.Write(b)
 }
