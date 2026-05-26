@@ -1,27 +1,55 @@
-{{define "title"}}Upload · Wedding photos{{end}}
+{{define "title"}}Drop · Wedding photos · M&I{{end}}
 {{define "main"}}
-<section class="upload">
-  <p class="hint">Pick photos from your phone — they're added to the
-  shared album. Set your name above so everyone knows whose they are.</p>
+<section class="upload-page">
+
+  <div class="section-h">
+    <span class="title">Add to the roll</span>
+    <span class="sub">— from your phone</span>
+  </div>
+  <p class="section-p">
+    Pick anything you've already snapped today. We don't mind blurry ones —
+    those are often the best.
+  </p>
 
   <label class="bigbtn" id="up-pick">
+    <span class="bigbtn-tape">Drop photos here</span>
     <input id="up-input" type="file" accept="image/*" multiple hidden>
-    <span class="bigbtn-ico" aria-hidden="true">＋</span>
-    <span>Add photos</span>
+    <div class="bigbtn-frame">
+      <span class="vf-corner vf-tl-h"></span><span class="vf-corner vf-tl-v"></span>
+      <span class="vf-corner vf-tr-h"></span><span class="vf-corner vf-tr-v"></span>
+      <span class="vf-corner vf-bl-h"></span><span class="vf-corner vf-bl-v"></span>
+      <span class="vf-corner vf-br-h"></span><span class="vf-corner vf-br-v"></span>
+      <div class="bigbtn-plus">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </div>
+      <div class="bigbtn-label">Add photos</div>
+      <div class="bigbtn-sub">Multi-select OK · HEIC fine</div>
+    </div>
+    <div class="bigbtn-foot">
+      <span>load your film…</span>
+      <span class="date">'26·05·30</span>
+    </div>
   </label>
 
   <noscript>
     <form class="ns-form" action="/upload" method="post"
           enctype="multipart/form-data">
-      <p class="noscript">Without JavaScript you can still upload:</p>
+      <p class="section-p">Without JavaScript you can still upload:</p>
       <input type="file" name="file" accept="image/*" multiple>
       <button type="submit">Upload</button>
     </form>
   </noscript>
 
+  <div class="queue-head"><span class="label">Now uploading</span></div>
   <ul id="up-queue" class="queue" aria-live="polite"></ul>
 
-  <h2 class="rec-h">Your recent uploads</h2>
+  <div class="recent-head">
+    <span class="title">Your contributions</span>
+    <span class="note">(thank you!)</span>
+  </div>
   <ul id="up-recent" class="grid">
     {{range .Recent}}
     <li class="cell"><a href="/p/{{.Hash}}"><img loading="lazy" src="/thumb/{{.Hash}}" alt=""></a></li>
@@ -29,6 +57,7 @@
     <li class="empty" id="up-empty">Nothing yet — add your first photo.</li>
     {{end}}
   </ul>
+
 </section>
 {{end}}
 {{define "scripts"}}<script src="/static/upload.js" defer></script>{{end}}

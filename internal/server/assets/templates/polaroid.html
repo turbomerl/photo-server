@@ -1,22 +1,78 @@
-{{define "title"}}Polaroid · Wedding photos{{end}}
+{{define "title"}}Snap · Wedding photos · M&I{{end}}
 {{define "main"}}
-<section class="polaroid">
-  <p class="hint">Tap the shutter, take a photo — it drops straight
-  into the shared album. Like a Polaroid: no edit, no undo.</p>
+<section class="polaroid-page">
 
-  <label class="shutter" id="ps-shutter">
-    <input id="ps-shot" type="file" accept="image/*" capture="environment" hidden>
-    <span class="shutter-ring" aria-hidden="true"></span>
-    <span class="shutter-text">Take photo</span>
-  </label>
+  <!-- Hero stack: three tilted polaroids of Mariam & Isambard -->
+  <div class="hero-stack" aria-hidden="true">
+    <div class="hero-poly hero-poly--1">
+      <span class="tape"></span>
+      <div class="frame"><img src="/static/img/couple-1.jpeg" alt=""></div>
+      <div class="cap">
+        <span class="caption">we did it.</span>
+        <span class="date">'26·04·17</span>
+      </div>
+    </div>
+    <div class="hero-poly hero-poly--2">
+      <span class="tape"></span>
+      <div class="frame"><img src="/static/img/couple-2.jpeg" alt=""></div>
+      <div class="cap">
+        <span class="caption">Mariam &amp; Isambard</span>
+        <span class="date">'26·04·17</span>
+      </div>
+    </div>
+    <div class="hero-poly hero-poly--3">
+      <span class="tape"></span>
+      <div class="frame"><img src="/static/img/couple-3.jpeg" alt=""></div>
+      <div class="cap">
+        <span class="caption">the family</span>
+        <span class="date">'26·04·17</span>
+      </div>
+    </div>
+  </div>
+
+  <p class="shutter-hint">
+    Tap the shutter — your photo lands in our album.
+    <span class="sub">No edit, no undo. Like the old days.</span>
+  </p>
+
+  <!-- Disposable-camera shutter, framed by a viewfinder -->
+  <div class="shutter-card">
+    <span class="vf-corner vf-tl-h"></span><span class="vf-corner vf-tl-v"></span>
+    <span class="vf-corner vf-tr-h"></span><span class="vf-corner vf-tr-v"></span>
+    <span class="vf-corner vf-bl-h"></span><span class="vf-corner vf-bl-v"></span>
+    <span class="vf-corner vf-br-h"></span><span class="vf-corner vf-br-v"></span>
+    <span class="vf-ring"></span>
+    <span class="vf-crosshair-h"></span><span class="vf-crosshair-v"></span>
+
+    <div class="vf-strip vf-strip--top">
+      <span class="led">READY</span>
+      <span>07/36</span>
+    </div>
+
+    <label class="shutter" id="ps-shutter" aria-label="Take photo">
+      <input id="ps-shot" type="file" accept="image/*" capture="environment" hidden>
+      <span class="shutter-ring" aria-hidden="true"></span>
+      <span class="shutter-text">Take photo</span>
+    </label>
+
+    <div class="vf-strip vf-strip--bot">
+      <span>F2.8 · 1/60</span>
+    </div>
+    <span class="vf-date">'26·05·30</span>
+  </div>
 
   <noscript>
     <p class="noscript">Polaroid mode needs JavaScript. Use the
-    <a href="/upload">Upload</a> tab to pick photos, or browse the
-    <a href="/gallery">Gallery</a>.</p>
+    <a href="/upload">Drop</a> tab to pick photos, or browse the
+    <a href="/gallery">Roll</a>.</p>
   </noscript>
 
-  <ul id="ps-strip" class="strip" aria-live="polite"></ul>
+  <!-- Developing strip — JS appends .shot tiles here on capture -->
+  <div class="strip-section">
+    <div class="strip-head"><span>Just developed</span></div>
+    <ul id="ps-strip" class="strip" aria-live="polite"></ul>
+  </div>
+
 </section>
 {{end}}
 {{define "scripts"}}<script src="/static/polaroid.js" defer></script>{{end}}

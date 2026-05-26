@@ -165,3 +165,29 @@ func TestNoindexHeader(t *testing.T) {
 		t.Errorf("X-Robots-Tag = %q, want noindex", got)
 	}
 }
+
+func TestSelfHostedFontsBypassGate(t *testing.T) {
+	s := accessServer(t, "letmein") // gate ON
+
+	// The gate page is served to unauthed guests and uses the fonts, so
+	// /static/fonts/ must be reachable without the access cookie.
+	rec := accessGet(t, s, "/static/fonts/inter.woff2")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("font behind gate = %d, want 200 (exempt)", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "font/woff2" {
+		t.Errorf("font content-type = %q, want font/woff2", ct)
+	}
+	if rec := accessGet(t, s, "/static/fonts/nope.woff2"); rec.Code != http.StatusNotFound {
+		t.Errorf("missing font = %d, want 404", rec.Code)
+	}
+
+	// The gate page declares self-hosted fonts, never an external CDN.
+	gate := accessGet(t, s, "/").Body.String()
+	if !strings.Contains(gate, "/static/fonts/") {
+		t.Error("gate page missing self-hosted @font-face")
+	}
+	if strings.Contains(gate, "googleapis") || strings.Contains(gate, "gstatic") {
+		t.Error("gate page references an external font CDN")
+	}
+}
