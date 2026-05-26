@@ -233,7 +233,7 @@ const gateHTML = `<!doctype html>
 </head>
 <body>
   <div class="stamp-bar">
-    <span>17·04·26</span>
+    <span>30·06·26</span>
     <span>Mariam &amp; Isambard</span>
   </div>
 
