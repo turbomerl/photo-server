@@ -122,3 +122,21 @@ func TestUploadJSServed(t *testing.T) {
 		t.Error("upload.js missing the XHR upload path")
 	}
 }
+
+func TestResizeJSServedAndWired(t *testing.T) {
+	s := newTestServer(t)
+	rec := get(t, s, "/static/resize.js")
+	if rec.Code != http.StatusOK ||
+		!strings.HasPrefix(rec.Header().Get("Content-Type"), "application/javascript") {
+		t.Fatalf("resize.js code=%d ct=%q", rec.Code, rec.Header().Get("Content-Type"))
+	}
+	if b := rec.Body.String(); !strings.Contains(b, "psResize") || !strings.Contains(b, "createImageBitmap") {
+		t.Error("resize.js missing the client-side downscale logic")
+	}
+	// Both upload paths must load resize.js (jz9 client-side downscale).
+	for _, path := range []string{"/", "/upload"} {
+		if !strings.Contains(get(t, s, path).Body.String(), `src="/static/resize.js"`) {
+			t.Errorf("%s does not load resize.js", path)
+		}
+	}
+}
