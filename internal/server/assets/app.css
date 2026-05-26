@@ -822,6 +822,16 @@ body.admin { padding: 16px; padding-bottom: 28px; }
 .adm-acts .adm-danger { color: var(--danger); border-color: var(--danger); }
 .adm-empty { color: var(--ink-soft); padding: 14px 0; font-style: italic; }
 
+/* Phones: thumb + info on top, action buttons full-width below (bigger
+   tap targets; nothing squished off-screen). */
+@media (max-width: 599px) {
+  .adm-row { grid-template-columns: 56px 1fr; column-gap: 10px; row-gap: 8px; }
+  .adm-thumb { width: 56px; height: 56px; }
+  .adm-acts { grid-column: 1 / -1; }
+  .adm-acts form, .adm-acts button { flex: 1; }
+  .adm-acts button { width: 100%; padding: 9px 11px; }
+}
+
 /* ── Larger viewports: keep mobile width, centre the column ─────── */
 @media (min-width: 600px) {
   .appbar, .name-tag-wrap, .content, .tabbar { max-width: 480px; }
