@@ -77,10 +77,13 @@ type pageData struct {
 	// page (kgu.23).
 	ViewHearts  int64
 	ViewHearted bool
-	// Sort is the gallery mode: "" (All, newest-first) or "top" (Most
-	// loved leaderboard). Drives the tab UI and disables infinite scroll
-	// for the top view.
-	Sort string
+	// Filter is the gallery mode: "" (All, newest-first) or "loved" (the
+	// "Most loved" best-of showcase). Drives the filter tabs + the
+	// single-column showcase layout, and disables infinite scroll for loved.
+	// TotalCount / LovedCount feed the tab counters.
+	Filter     string
+	TotalCount int
+	LovedCount int
 }
 
 // appHost is the bare host (no scheme/path) of the configured BaseURL,
@@ -165,11 +168,11 @@ func (s *Server) handleGalleryPage(w http.ResponseWriter, r *http.Request) {
 		photos []store.PhotoListItem
 		err    error
 		next   int64
-		sort   string
+		filter string
 	)
-	if r.URL.Query().Get("sort") == "top" {
-		sort = "top"
-		photos, err = s.st.TopPhotos(id, topGalleryLimit) // fixed top-N, no infinite scroll
+	if r.URL.Query().Get("filter") == "loved" {
+		filter = "loved"
+		photos, err = s.st.TopPhotos(id, topGalleryLimit) // fixed top-N best-of, no infinite scroll
 	} else {
 		photos, err = s.st.GalleryPhotos(id, 0, galleryPageSize)
 		if err == nil {
@@ -177,15 +180,23 @@ func (s *Server) handleGalleryPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err != nil {
-		s.log.Error("gallery page query", "err", err, "sort", sort)
+		s.log.Error("gallery page query", "err", err, "filter", filter)
 		// Still render the shell; the grid just starts empty.
+	}
+	// Tab counters: total visible photos + how many have any love.
+	total, _, cErr := s.st.PhotoCounts()
+	loved, lErr := s.st.LovedCount()
+	if cErr != nil || lErr != nil {
+		s.log.Error("gallery counts", "countsErr", cErr, "lovedErr", lErr)
 	}
 	s.renderPage(w, tplGallery, pageData{
 		Active:     "gallery",
 		Name:       name,
 		Photos:     photos,
 		NextBefore: next,
-		Sort:       sort,
+		Filter:     filter,
+		TotalCount: total,
+		LovedCount: loved,
 	})
 }
 

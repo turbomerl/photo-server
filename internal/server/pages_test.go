@@ -71,7 +71,7 @@ func TestGalleryNeedsNoJS(t *testing.T) {
 	if strings.Contains(b, "/static/polaroid.js") {
 		t.Error("gallery page should not load polaroid.js")
 	}
-	if !strings.Contains(b, "Gallery") {
+	if !strings.Contains(b, `id="gal-grid"`) {
 		t.Error("gallery page content missing")
 	}
 }

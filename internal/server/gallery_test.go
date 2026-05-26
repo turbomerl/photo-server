@@ -144,10 +144,11 @@ func TestGalleryHeartsAndTopMode(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// All view: tabs, a heart form per photo, both photos listed.
+	// All view: filter tabs, a heart form per photo, both photos listed.
 	all := get(t, s, "/gallery").Body.String()
 	for _, want := range []string{
-		`class="gallery-tabs"`,
+		`class="gal-filters"`,
+		`href="/gallery?filter=loved"`,
 		`action="/photo/` + a + `/heart"`,
 		"Most loved",
 		`src="/static/heart.js"`,
@@ -160,12 +161,16 @@ func TestGalleryHeartsAndTopMode(t *testing.T) {
 		t.Error("/gallery should list both photos")
 	}
 
-	// Top view: only the hearted photo; the zero-heart one is excluded.
-	top := get(t, s, "/gallery?sort=top").Body.String()
-	if !strings.Contains(top, b) {
-		t.Error("/gallery?sort=top should include the hearted photo")
+	// Most-loved (?filter=loved): single-column showcase of hearted photos
+	// only; the zero-heart one is excluded.
+	loved := get(t, s, "/gallery?filter=loved").Body.String()
+	if !strings.Contains(loved, "is-loved") {
+		t.Error("/gallery?filter=loved should use the single-column showcase")
 	}
-	if strings.Contains(top, a) {
-		t.Error("/gallery?sort=top should exclude the zero-heart photo")
+	if !strings.Contains(loved, b) {
+		t.Error("/gallery?filter=loved should include the hearted photo")
+	}
+	if strings.Contains(loved, a) {
+		t.Error("/gallery?filter=loved should exclude the zero-heart photo")
 	}
 }
